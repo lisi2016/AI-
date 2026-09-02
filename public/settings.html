@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>系统设置 - 月度工作总结与计划生成系统</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <div class="brand"><span class="logo">📋</span>月度工作总结与计划生成系统</div>
+    <nav>
+      <a href="/">成员提交</a>
+      <a href="/report.html">汇总生成</a>
+      <a href="/settings.html" class="active">系统设置</a>
+    </nav>
+  </header>
+
+  <!-- 登录界面 -->
+  <main id="loginView" style="display:none">
+    <div class="login-box">
+      <div class="card">
+        <h1>🔒 管理员登录</h1>
+        <p class="tip">系统设置仅管理员可访问，用于管理：教研室与主任、二级学院接收邮箱、SMTP 邮箱、大模型、登录密码。</p>
+        <label>管理员密码</label>
+        <input type="password" id="loginPwd" placeholder="请输入管理员密码" style="margin-bottom:14px">
+        <button class="btn" id="loginBtn" style="width:100%;justify-content:center">登录</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- 设置界面 -->
+  <main id="settingsView" style="display:none">
+    <div class="card" style="padding:12px 24px">
+      <div class="row between">
+        <div style="font-weight:700;font-size:15px">⚙️ 系统设置</div>
+        <div class="row">
+          <span class="hint" id="savedHint"></span>
+          <button class="btn secondary sm" id="logoutBtn">退出登录</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🏢 教研室与主任管理 <span class="sub">成员名单固定；主任换届时在此修改姓名与邮箱即可</span></h2>
+      <div id="deptList"></div>
+      <div class="row">
+        <button class="btn secondary sm" id="addDeptBtn">＋ 添加教研室</button>
+        <button class="btn" id="saveDeptsBtn">保存教研室信息</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>⚡ 自动汇总设置 <span class="sub">全员提交后自动汇总并发送到二级学院指定邮箱</span></h2>
+      <div style="margin-bottom:12px">
+        <label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">
+          <input type="checkbox" id="autoEnabled" checked> 启用自动汇总（某教研室某月所有成员都提交后，自动生成两份 Word 并发送邮件）
+        </label>
+      </div>
+      <div class="grid cols-2">
+        <div>
+          <label>二级学院指定负责人邮箱（自动汇总收件人）</label>
+          <input type="email" id="autoCollegeEmail" placeholder="如 jiaowuke@college.edu.cn">
+          <div class="hint">每个教研室全员提交后，汇总文档自动发送到此邮箱</div>
+        </div>
+        <div>
+          <label style="display:inline-flex;align-items:center;gap:6px;font-weight:500;margin-top:24px">
+            <input type="checkbox" id="autoAlsoHead" checked> 同时抄送该教研室主任邮箱
+          </label>
+        </div>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn" id="saveAutoBtn">保存自动汇总设置</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📧 邮件设置 <span class="sub">把生成的 Word 文档发送到学院邮箱与教研室主任邮箱</span></h2>
+      <div style="margin-bottom:14px">
+        <label>发送方式</label>
+        <select id="mailerMethod">
+          <option value="agently">腾讯 AI Agent 邮箱（agent.qq.com，推荐，不易风控）</option>
+          <option value="smtp">标准 SMTP（需配置下方账号/授权码）</option>
+        </select>
+        <div class="hint">推荐使用腾讯 Agently Mail（AI 智能体专属邮箱）：为程序自动发信设计，每日 50 封、无个人邮箱那种风控限流。需在服务器上安装并授权 <code>agently-cli</code>（已就绪）。选择 SMTP 时需填写下方发件账号。两种方式的收件人都是「二级学院指定邮箱」。</div>
+      </div>
+      <div class="grid cols-2">
+        <div><label>SMTP 服务器地址</label><input type="text" id="smtpHost" placeholder="如 smtp.qq.com / smtp.exmail.qq.com / smtp.163.com"></div>
+        <div><label>端口</label><input type="number" id="smtpPort" placeholder="465 或 587"></div>
+      </div>
+      <div style="margin-top:12px">
+        <label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">
+          <input type="checkbox" id="smtpSecure" checked> 使用 SSL 加密连接（465 端口一般勾选，587 端口一般不勾选）
+        </label>
+      </div>
+      <div class="grid cols-2" style="margin-top:12px">
+        <div><label>发件邮箱账号</label><input type="text" id="smtpUser" placeholder="如 report@college.edu.cn"></div>
+        <div><label>发件邮箱密码 / 授权码</label><input type="password" id="smtpPass" placeholder="QQ/163 等邮箱需使用授权码"></div>
+      </div>
+      <div class="grid cols-2" style="margin-top:12px">
+        <div><label>发件人显示名称</label><input type="text" id="smtpFrom" placeholder="如：月度总结系统"></div>
+        <div><label>邮件主题模板</label><input type="text" id="mailSubject" placeholder="支持 {department} {year} {monthNum} {month} {count}"></div>
+      </div>
+      <div style="margin-top:12px">
+        <label>邮件正文模板</label>
+        <textarea id="mailBody" style="min-height:110px"></textarea>
+        <div class="hint">支持占位符：{department} 教研室名、{year} 年份、{monthNum} 月份数字、{month} 形如 2026-01、{count} 提交人数</div>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn" id="saveSmtpBtn">保存邮件设置</button>
+        <button class="btn secondary" id="testSmtpBtn">发送测试邮件</button>
+        <input type="email" id="testSmtpTo" placeholder="测试收件邮箱" style="max-width:240px">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🤖 大模型（LLM）设置 <span class="sub">用于汇总各教研室成员的总结与计划，生成正式公文风格文档</span></h2>
+      <div style="margin-bottom:12px">
+        <label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">
+          <input type="checkbox" id="llmEnabled" checked> 启用大模型汇总（关闭后使用基础汇总模式）
+        </label>
+      </div>
+      <div class="grid cols-2">
+        <div><label>API 接口地址</label><input type="text" id="llmBase" placeholder="https://api.deepseek.com"></div>
+        <div><label>模型名称</label><input type="text" id="llmModel" placeholder="deepseek-chat"></div>
+      </div>
+      <div class="grid cols-2" style="margin-top:12px">
+        <div><label>API Key</label><input type="password" id="llmKey" placeholder="sk-..."></div>
+        <div><label>温度（0-1，越小越严谨）</label><input type="number" id="llmTemp" step="0.1" min="0" max="1"></div>
+      </div>
+      <div class="hint" style="margin-top:6px">默认使用 DeepSeek 开放平台（https://api.deepseek.com），也兼容任意 OpenAI 风格接口。</div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn" id="saveLlmBtn">保存大模型设置</button>
+        <button class="btn secondary" id="testLlmBtn">测试连接</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🔐 安全设置</h2>
+      <label>修改管理员密码</label>
+      <div class="row">
+        <input type="password" id="newPassword" placeholder="留空则不修改" style="max-width:280px">
+        <button class="btn" id="savePwdBtn">保存新密码</button>
+      </div>
+    </div>
+  </main>
+
+  <footer>月度工作总结与计划生成系统 · 设置端</footer>
+  <div class="toast-wrap" id="toasts"></div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const TOKEN_KEY = 'mrgs_admin_token';
+    let departments = [];
+    let settings = null;
+
+    function toast(msg, type = 'ok') {
+      const el = document.createElement('div');
+      el.className = 'toast ' + type;
+      el.textContent = msg;
+      $('toasts').appendChild(el);
+      setTimeout(() => el.remove(), 4200);
+    }
+
+    function authHeaders() {
+      return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem(TOKEN_KEY) };
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /* ---- 登录 ---- */
+    $('loginBtn').addEventListener('click', async () => {
+      const pwd = $('loginPwd').value;
+      if (!pwd) return toast('请输入密码', 'err');
+      try {
+        const res = await fetch('/api/settings/login', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pwd }),
+        }).then(r => r.json());
+        if (res.ok) {
+          localStorage.setItem(TOKEN_KEY, res.token);
+          await loadAll();
+        } else {
+          toast(res.error || '登录失败', 'err');
+        }
+      } catch (e) { toast('网络错误：' + e.message, 'err'); }
+    });
+
+    $('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem(TOKEN_KEY);
+      showLogin();
+    });
+
+    /* ---- 加载 ---- */
+    async function loadAll() {
+      const res = await fetch('/api/settings', { headers: { Authorization: 'Bearer ' + localStorage.getItem(TOKEN_KEY) } }).then(r => r.json());
+      if (res.ok) {
+        settings = res.settings;
+        departments = res.departments;
+        fillForms();
+        showSettings();
+      } else {
+        showLogin();
+      }
+    }
+
+    function fillForms() {
+      $('mailerMethod').value = settings.mailer.method;
+      $('autoEnabled').checked = settings.auto.enabled;
+      $('autoCollegeEmail').value = settings.auto.collegeEmail;
+      $('autoAlsoHead').checked = settings.auto.alsoSendToHead;
+      $('smtpHost').value = settings.smtp.host;
+      $('smtpPort').value = settings.smtp.port;
+      $('smtpSecure').checked = settings.smtp.secure;
+      $('smtpUser').value = settings.smtp.user;
+      $('smtpPass').value = settings.smtp.pass;
+      $('smtpFrom').value = settings.smtp.fromName;
+      $('mailSubject').value = settings.mail.subjectTemplate;
+      $('mailBody').value = settings.mail.bodyTemplate;
+      $('llmEnabled').checked = settings.llm.enabled;
+      $('llmBase').value = settings.llm.baseUrl;
+      $('llmModel').value = settings.llm.model;
+      $('llmKey').value = settings.llm.apiKey;
+      $('llmTemp').value = settings.llm.temperature;
+      renderDepts();
+    }
+
+    function renderDepts() {
+      $('deptList').innerHTML = departments.map((d, i) => `
+        <div class="dep-card">
+          <div class="dep-head">
+            <div class="dep-name">${i + 1}. ${escapeHtml(d.name)}</div>
+            <button class="btn danger sm" data-i="${i}">删除</button>
+          </div>
+          <div class="grid cols-3">
+            <div><label>教研室名称</label><input type="text" data-field="name" data-i="${i}" value="${escapeHtml(d.name)}"></div>
+            <div><label>主任姓名</label><input type="text" data-field="headName" data-i="${i}" value="${escapeHtml(d.headName)}"></div>
+            <div><label>主任邮箱（手动发送用）</label><input type="email" data-field="headEmail" data-i="${i}" value="${escapeHtml(d.headEmail)}" placeholder="head@college.edu.cn"></div>
+          </div>
+          <div style="margin-top:10px">
+            <label>成员名单（每行一个姓名，全员提交后自动汇总）</label>
+            <textarea data-field="members" data-i="${i}" style="min-height:80px">${escapeHtml((d.members || []).map(m => m.name).join('\n'))}</textarea>
+          </div>
+        </div>`).join('') || '<div class="empty">暂无教研室，点击下方「添加教研室」创建</div>';
+
+      $('deptList').querySelectorAll('input[data-field], textarea[data-field]').forEach(el => {
+        el.addEventListener('input', () => {
+          const i = Number(el.dataset.i);
+          const f = el.dataset.field;
+          if (f === 'members') {
+            departments[i].members = el.value.split(/\r?\n/).map(n => n.trim()).filter(Boolean).map(name => ({ name }));
+          } else {
+            departments[i][f] = el.value;
+          }
+        });
+      });
+      $('deptList').querySelectorAll('button[data-i]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          departments.splice(Number(btn.dataset.i), 1);
+          renderDepts();
+        });
+      });
+    }
+
+    $('addDeptBtn').addEventListener('click', () => {
+      departments.push({ id: 'd' + Date.now(), name: '新教研室', headName: '', headEmail: '', members: [] });
+      renderDepts();
+    });
+
+    $('saveDeptsBtn').addEventListener('click', async () => {
+      const res = await fetch('/api/departments', {
+        method: 'PUT', headers: authHeaders(), body: JSON.stringify({ departments }),
+      }).then(r => r.json());
+      if (res.ok) { toast(res.message, 'ok'); flashSaved(); } else toast(res.error || '保存失败', 'err');
+    });
+
+    function collectAutoForm() {
+      return {
+        enabled: $('autoEnabled').checked,
+        collegeEmail: $('autoCollegeEmail').value.trim(),
+        alsoSendToHead: $('autoAlsoHead').checked,
+      };
+    }
+
+    $('saveAutoBtn').addEventListener('click', async () => {
+      const res = await fetch('/api/settings', {
+        method: 'PUT', headers: authHeaders(), body: JSON.stringify({ auto: collectAutoForm() }),
+      }).then(r => r.json());
+      if (res.ok) { toast('自动汇总设置已保存', 'ok'); flashSaved(); } else toast(res.error || '保存失败', 'err');
+    });
+
+    function collectSmtpForm() {
+      return {
+        host: $('smtpHost').value.trim(),
+        port: Number($('smtpPort').value) || 465,
+        secure: $('smtpSecure').checked,
+        user: $('smtpUser').value.trim(),
+        pass: $('smtpPass').value,
+        fromName: $('smtpFrom').value.trim(),
+      };
+    }
+
+    $('saveSmtpBtn').addEventListener('click', async () => {
+      const res = await fetch('/api/settings', {
+        method: 'PUT', headers: authHeaders(), body: JSON.stringify({
+          smtp: collectSmtpForm(),
+          mailer: { method: $('mailerMethod').value },
+          mail: { subjectTemplate: $('mailSubject').value, bodyTemplate: $('mailBody').value },
+        }),
+      }).then(r => r.json());
+      if (res.ok) { toast('邮件设置已保存', 'ok'); flashSaved(); } else toast(res.error || '保存失败', 'err');
+    });
+
+    $('testSmtpBtn').addEventListener('click', async () => {
+      const to = $('testSmtpTo').value.trim();
+      if (!to) return toast('请先填写测试收件邮箱', 'err');
+      $('testSmtpBtn').disabled = true;
+      try {
+        const res = await fetch('/api/test/smtp', {
+          method: 'POST', headers: authHeaders(), body: JSON.stringify({ smtp: collectSmtpForm(), to }),
+        }).then(r => r.json());
+        if (res.ok) toast(res.message, 'ok'); else toast(res.error || '测试失败', 'err');
+      } finally { $('testSmtpBtn').disabled = false; }
+    });
+
+    function collectLlmForm() {
+      return {
+        enabled: $('llmEnabled').checked,
+        baseUrl: $('llmBase').value.trim(),
+        model: $('llmModel').value.trim(),
+        apiKey: $('llmKey').value,
+        temperature: Number($('llmTemp').value) || 0.6,
+      };
+    }
+
+    $('saveLlmBtn').addEventListener('click', async () => {
+      const res = await fetch('/api/settings', {
+        method: 'PUT', headers: authHeaders(), body: JSON.stringify({ llm: collectLlmForm() }),
+      }).then(r => r.json());
+      if (res.ok) { toast('大模型设置已保存', 'ok'); flashSaved(); } else toast(res.error || '保存失败', 'err');
+    });
+
+    $('testLlmBtn').addEventListener('click', async () => {
+      $('testLlmBtn').disabled = true;
+      $('testLlmBtn').innerHTML = '<span class="spinner"></span> 测试中…';
+      try {
+        const res = await fetch('/api/test/llm', {
+          method: 'POST', headers: authHeaders(), body: JSON.stringify({ llm: collectLlmForm() }),
+        }).then(r => r.json());
+        if (res.ok) toast(res.message, 'ok'); else toast(res.error || '测试失败', 'err');
+      } finally {
+        $('testLlmBtn').disabled = false;
+        $('testLlmBtn').textContent = '测试连接';
+      }
+    });
+
+    $('savePwdBtn').addEventListener('click', async () => {
+      const np = $('newPassword').value;
+      if (!np) return toast('请输入新密码', 'err');
+      const res = await fetch('/api/settings', {
+        method: 'PUT', headers: authHeaders(), body: JSON.stringify({ newPassword: np }),
+      }).then(r => r.json());
+      if (res.ok) { toast('密码已修改', 'ok'); $('newPassword').value = ''; } else toast(res.error || '保存失败', 'err');
+    });
+
+    function showLogin() { $('loginView').style.display = 'block'; $('settingsView').style.display = 'none'; }
+    function showSettings() { $('loginView').style.display = 'none'; $('settingsView').style.display = 'block'; }
+
+    let savedTimer = null;
+    function flashSaved() {
+      $('savedHint').textContent = '✓ 已保存 ' + new Date().toLocaleTimeString();
+      clearTimeout(savedTimer);
+      savedTimer = setTimeout(() => $('savedHint').textContent = '', 2500);
+    }
+
+    /* 启动：有 token 则直接加载，否则显示登录 */
+    if (localStorage.getItem(TOKEN_KEY)) {
+      loadAll().catch(e => { toast('加载失败：' + e.message, 'err'); showLogin(); });
+    } else {
+      showLogin();
+    }
+  </script>
+</body>
+</html>

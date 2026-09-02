@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>汇总生成 - 月度工作总结与计划生成系统</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <div class="brand"><span class="logo">📋</span>月度工作总结与计划生成系统</div>
+    <nav>
+      <a href="/">成员提交</a>
+      <a href="/report.html" class="active">汇总生成</a>
+      <a href="/settings.html">系统设置</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="card">
+      <h2>🎯 选择教研室与月份</h2>
+      <div class="grid cols-2" style="margin-bottom:14px">
+        <div>
+          <label>总结月份</label>
+          <select id="month"></select>
+          <div class="hint">所选月份为「工作总结」所属月，工作计划自动对应下月</div>
+        </div>
+        <div>
+          <label>教研室</label>
+          <select id="department"></select>
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn secondary" id="refreshBtn">刷新</button>
+        <span class="hint">选择后自动加载该教研室本月提交情况与报告状态</span>
+      </div>
+    </div>
+
+    <div id="llmWarn" style="display:none">
+      <div class="alert warn">⚠️ 尚未配置大模型 API Key，当前将使用「基础汇总模式」（简单归纳拼接）。建议在<a href="/settings.html">系统设置</a>中配置大模型以获得更好的汇总质量。</div>
+    </div>
+    <div id="autoWarn" style="display:none">
+      <div class="alert warn">⚠️ 尚未配置「二级学院接收邮箱」，全员提交后系统不会自动发送汇总邮件。请在<a href="/settings.html">系统设置 → 自动汇总</a>中填写，或在本页手动生成并发送。</div>
+    </div>
+
+    <div class="card" id="statusCard" style="display:none">
+      <h2>📄 报告状态</h2>
+      <div id="statusBody" class="empty">请先选择教研室与月份</div>
+    </div>
+
+    <div class="card">
+      <h2>👥 成员提交情况 <span class="sub" id="submitCount"></span></h2>
+      <div id="subTable"><div class="empty">请先选择教研室与月份</div></div>
+    </div>
+
+    <div class="card" id="actionCard" style="display:none">
+      <h2>⚙️ 汇总生成与发送</h2>
+      <div class="row">
+        <button class="btn" id="generateBtn">🤖 AI 汇总并生成 Word 文档</button>
+        <button class="btn success" id="sendBtn" disabled>📧 发送邮件给教研室主任</button>
+        <span class="hint" id="sendTarget"></span>
+      </div>
+      <div class="hint" id="generateNote"></div>
+      <div class="divider"></div>
+      <div class="grid cols-2" id="previews" style="display:none">
+        <div class="preview" id="summaryPreview"></div>
+        <div class="preview" id="planPreview"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer>月度工作总结与计划生成系统 · 管理端</footer>
+  <div class="toast-wrap" id="toasts"></div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let departments = [];
+    let current = { month: '', departmentId: '' };
+
+    function toast(msg, type = 'ok') {
+      const el = document.createElement('div');
+      el.className = 'toast ' + type;
+      el.textContent = msg;
+      $('toasts').appendChild(el);
+      setTimeout(() => el.remove(), 4200);
+    }
+
+    async function init() {
+      const res = await fetch('/api/bootstrap').then(r => r.json());
+      departments = res.departments;
+      $('llmWarn').style.display = res.settings.hasLlmKey ? 'none' : 'block';
+      $('autoWarn').style.display = (res.settings.autoEnabled && res.settings.hasCollegeEmail) ? 'none' : 'block';
+
+      // 月份下拉：最近 12 个月 + 有数据的月份，始终可自由选择（不因清空数据而只剩当月）
+      const lastMonths = (M, n) => {
+        const out = [], [y, m] = M.split('-').map(Number);
+        for (let i = 0; i < n; i++) {
+          const d = new Date(y, m - 1 - i, 1);
+          out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+        }
+        return out;
+      };
+      const monthOpts = [...new Set([...lastMonths(res.currentMonth, 12), ...(res.months || [])])].sort().reverse();
+      $('month').innerHTML = monthOpts.map(m => `<option value="${m}">${m.replace('-', ' 年 ') + ' 月'}</option>`).join('');
+      $('department').innerHTML = departments.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+
+      current.month = $('month').value;
+      current.departmentId = $('department').value;
+      $('month').addEventListener('change', () => { current.month = $('month').value; refresh(); });
+      $('department').addEventListener('change', () => { current.departmentId = $('department').value; refresh(); });
+      $('refreshBtn').addEventListener('click', refresh);
+      await refresh();
+    }
+
+    async function refresh() {
+      if (!current.month || !current.departmentId) return;
+      $('previews').style.display = 'none';
+      $('sendBtn').disabled = true;
+
+      const [subsRes, statusRes] = await Promise.all([
+        fetch(`/api/submissions?month=${current.month}&departmentId=${current.departmentId}`).then(r => r.json()),
+        fetch(`/api/report/status?month=${current.month}&departmentId=${current.departmentId}`).then(r => r.json()),
+      ]);
+
+      const subs = subsRes.submissions || [];
+      const dept = departments.find(d => d.id === current.departmentId);
+      const total = dept ? dept.members.length : 0;
+      const submittedNames = new Set(subs.map(s => s.memberName));
+      const missing = dept ? dept.members.filter(m => !submittedNames.has(m.name)).map(m => m.name) : [];
+      const complete = dept && total > 0 && missing.length === 0;
+
+      $('submitCount').textContent = `（已提交 ${subs.length} / ${total} 人）`;
+      $('subTable').innerHTML = subs.length || missing.length ? `
+        <table>
+          <thead><tr><th>姓名</th><th>提交时间</th><th>状态</th></tr></thead>
+          <tbody>
+            ${subs.map(s => `<tr><td>${escapeHtml(s.memberName)}</td><td class="time">${escapeHtml(fmt(s.submittedAt))}</td><td><span class="badge green">已提交</span></td></tr>`).join('')}
+            ${missing.map(n => `<tr><td>${escapeHtml(n)}</td><td class="time">—</td><td><span class="badge gray">未提交</span></td></tr>`).join('')}
+          </tbody>
+        </table>
+        <div style="margin-top:8px" class="row">
+          ${complete ? '<span class="badge green">✅ 全员已提交，系统将自动汇总发送</span>' : `<span class="badge gray">还差 ${missing.length} 人未提交：${missing.map(n => escapeHtml(n)).join('、')}</span>`}
+          <span class="hint">已提交：${subs.map(s => s.memberName).join('、') || '（无）'}</span>
+        </div>
+      ` : `<div class="empty">本月该教研室还没有成员提交内容，请先到「成员提交」页提交。</div>`;
+
+      if (statusRes.ok && statusRes.generated) {
+        renderStatus(statusRes, dept, complete);
+        $('actionCard').style.display = 'block';
+        $('generateNote').textContent = statusRes.note || (statusRes.usedLlm ? '本次报告由大模型汇总生成。' : '本次报告使用基础汇总模式生成。');
+        if (statusRes.preview) renderPreview(statusRes.preview);
+        $('previews').style.display = 'grid';
+        $('sendBtn').disabled = !dept.headEmail;
+        $('sendTarget').textContent = dept.headEmail ? `主任邮箱：${dept.headEmail}` : '⚠️ 该教研室未配置主任邮箱，无法手动发送（请在设置页补充）';
+      } else {
+        $('statusCard').style.display = 'none';
+        $('actionCard').style.display = 'block';
+        $('generateNote').textContent = '';
+        $('sendTarget').textContent = dept.headEmail ? `主任邮箱：${dept.headEmail}` : '⚠️ 该教研室未配置主任邮箱（请在设置页补充）';
+      }
+    }
+
+    function renderStatus(st, dept, complete) {
+      $('statusCard').style.display = 'block';
+      const autoPart = st.autoSentAt
+        ? `<div><span class="badge green">自动发送至 ${escapeHtml(st.autoSentTo)}</span> <span class="time">${escapeHtml(st.autoSentAt)}</span></div>`
+        : (st.autoError
+            ? `<div><span class="badge red">自动汇总失败</span> <span class="time">${escapeHtml(st.autoError)}</span></div>`
+            : (complete ? '<div><span class="badge blue">全员已提交，自动汇总待触发/待发送</span></div>' : ''));
+      $('statusBody').innerHTML = `
+        <div class="row" style="gap:18px">
+          <div><span class="badge blue">已生成（总结+计划合并文档）</span> <span class="time">${escapeHtml(st.generatedAt)}</span></div>
+          ${st.sentAt
+            ? `<div><span class="badge green">已手动发送至 ${escapeHtml(st.sentTo)}</span> <span class="time">${escapeHtml(st.sentAt)}</span></div>`
+            : ''}
+          ${autoPart}
+          <div><span class="time">参与成员 ${st.memberCount} 人</span></div>
+          <div><a href="/api/download?month=${current.month}&departmentId=${current.departmentId}" class="btn sm">⬇ 下载《工作总结及工作计划》</a></div>
+        </div>`;
+    }
+
+    function renderPreview(p) {
+      const sectionBlock = (sections) => (sections || []).map(s => `<li><strong>（${escapeHtml(s.title)}）</strong>${escapeHtml(s.content).slice(0, 90)}${escapeHtml(s.content).length > 90 ? '…' : ''}</li>`).join('');
+      $('summaryPreview').innerHTML = `
+        <h4>📝 工作总结（预览）</h4>
+        ${(p.summarySections || []).length ? `<ul>${sectionBlock(p.summarySections)}</ul>` : '<p>（无）</p>'}`;
+      $('planPreview').innerHTML = `
+        <h4>🗓 工作计划（预览）</h4>
+        ${(p.planSections || []).length ? `<ul>${sectionBlock(p.planSections)}</ul>` : '<p>（无）</p>'}`;
+    }
+
+    $('generateBtn').addEventListener('click', async () => {
+      const btn = $('generateBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> 汇总生成中…（可能需要 1-2 分钟）';
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(current),
+        }).then(r => r.json());
+        if (res.ok) {
+          toast('Word 文档已生成', 'ok');
+          $('generateNote').textContent = res.note || (res.usedLlm ? '本次报告由大模型汇总生成。' : '本次报告使用基础汇总模式生成。');
+          renderPreview(res.preview);
+          $('previews').style.display = 'grid';
+          await refresh();
+        } else {
+          toast(res.error || '生成失败', 'err');
+        }
+      } catch (e) {
+        toast('网络错误：' + e.message, 'err');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🤖 AI 汇总并生成 Word 文档';
+      }
+    });
+
+    $('sendBtn').addEventListener('click', async () => {
+      const btn = $('sendBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> 发送中…';
+      try {
+        const res = await fetch('/api/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(current),
+        }).then(r => r.json());
+        if (res.ok) {
+          toast(`邮件已发送至 ${res.sentTo}`, 'ok');
+          await refresh();
+        } else {
+          toast(res.error || '发送失败', 'err');
+        }
+      } catch (e) {
+        toast('网络错误：' + e.message, 'err');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '📧 发送邮件给教研室主任';
+      }
+    });
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function fmt(ts) {
+      if (!ts) return '—';
+      const d = new Date(ts), p = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    }
+
+    init().catch(e => toast('初始化失败：' + e.message, 'err'));
+  </script>
+</body>
+</html>

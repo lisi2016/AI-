@@ -1,0 +1,39 @@
+# ----- 依赖 -----
+node_modules/
+
+# ----- 运行数据（含 API Key、SMTP 凭据等敏感配置，切勿提交） -----
+data/
+reports/
+
+# ----- 密钥与凭据（绝不能提交到公开仓库） -----
+*.pem
+*.key
+*.p12
+*.pfx
+*.p8
+*.crt
+*.cer
+.env
+.env.*
+!.env.example
+
+# ----- 部署产物 -----
+deploy_stage/
+*.tar.gz
+*.zip
+*.tgz
+Dockerfile.swp
+
+# ----- 生成的文档 / 参考文档（用户数据，不入库） -----
+*.docx
+*.doc
+*.pdf
+
+# ----- 系统 / 编辑器 -----
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+*.swp
+*~

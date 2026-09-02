@@ -1,0 +1,17 @@
+{
+  "name": "monthly-report-generator",
+  "version": "1.0.0",
+  "description": "月度工作总结与计划生成系统：多部门成员在线提交月总结/月计划，大模型汇总生成两份 Word 文档并邮件发送给部门负责人",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "docx": "^9.1.1",
+    "express": "^4.21.2",
+    "nodemailer": "^6.9.16"
+  }
+}

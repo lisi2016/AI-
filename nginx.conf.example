@@ -1,0 +1,18 @@
+# Nginx 反向代理示例（HTTPS 由 certbot / 宝塔面板自动配置）
+# 将 report.example.com 换成您的域名
+server {
+    listen 80;
+    server_name report.example.com;
+
+    # 限制上传体积（提交内容为文本，10m 足够）
+    client_max_body_size 10m;
+
+    location / {
+        proxy_pass http://127.0.0.1:3081;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;   # 大模型汇总可能耗时较长
+    }
+}

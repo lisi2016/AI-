@@ -1,0 +1,13 @@
+# 一键启动：docker compose up -d
+# 数据保存在 ./data 和 ./reports（宿主机目录），容器重建不丢失
+services:
+  monthly-report:
+    build: .
+    image: monthly-report:latest
+    container_name: monthly-report
+    restart: always
+    ports:
+      - "3081:3081"
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports

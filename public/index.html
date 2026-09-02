@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>成员提交 - 月度工作总结与计划生成系统</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <div class="brand"><span class="logo">📋</span>月度工作总结与计划生成系统</div>
+    <nav>
+      <a href="/" class="active">成员提交</a>
+      <a href="/report.html">汇总生成</a>
+      <a href="/settings.html">系统设置</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="alert info">
+      <strong>使用说明：</strong>选择您的教研室和<b>总结月份</b>，填写该月的<b>工作总结</b>与<b>下月的工作计划</b>后提交。例如选择「8月」，则填写 8 月工作总结、9 月工作计划。内容按"教研室+姓名+月份"自动保存；当本教研室成员<b>全部提交</b>后，系统会自动汇总生成两份 Word 文档并发送到二级学院指定邮箱。如需修改，重新提交即可覆盖更新。
+    </div>
+
+    <div class="card">
+      <h2>✏️ 提交月度总结与计划</h2>
+      <div class="grid cols-3" style="margin-bottom:14px">
+        <div>
+          <label>总结月份 <span class="req">*</span></label>
+          <input type="month" id="month">
+          <div class="hint">所选月份为「工作总结」所属月份，工作计划自动对应下月</div>
+        </div>
+        <div>
+          <label>教研室 <span class="req">*</span></label>
+          <select id="department"></select>
+        </div>
+        <div>
+          <label>姓名 <span class="req">*</span></label>
+          <select id="memberName">
+            <option value="">请先选择教研室</option>
+          </select>
+          <div class="hint">成员名单由系统设置，如需增减请联系管理员</div>
+        </div>
+      </div>
+      <div class="alert info" id="monthMap" style="margin-bottom:14px"></div>
+
+      <label id="summaryLabel"><span>本月工作总结</span> <span class="req">*</span></label>
+      <textarea id="summary" class="big" placeholder="请分行填写本月完成的教研工作，例如：
+1. 组织教研活动 X 次（主题：集体备课 / 公开课研讨 / 新课标学习）；
+2. 听课评课 X 节，涉及教师：……；
+3. 课题《……》本月进展：……；
+4. 指导学生参加 XX 竞赛 / 实训实践情况；
+5. 教学常规工作（教学检查、教案作业检查、考试命题等）；
+6. 存在的问题与不足：……"></textarea>
+      <div class="hint" style="margin-bottom:14px">建议分行描述，每行一条，便于系统汇总归纳。</div>
+
+      <label id="planLabel"><span>下月工作计划</span> <span class="req">*</span></label>
+      <textarea id="plan" class="big" placeholder="请分行填写下月教研计划，例如：
+1. 组织集体备课 X 次，确定《……》课程教学方案；
+2. 开展公开课 / 示范课 X 节并组织评课；
+3. 推进课题《……》结题 / 开题准备工作；
+4. 期中教学检查、试卷命题与阅卷安排；
+5. 学生技能竞赛辅导、实践教学安排……"></textarea>
+      <div class="hint" style="margin-bottom:16px">建议分行描述，每行一条，注明时间节点更佳。</div>
+
+      <div class="row">
+        <button class="btn" id="submitBtn">提交</button>
+        <span id="submitResult"></span>
+      </div>
+    </div>
+
+    <div class="card" id="progressCard" style="display:none">
+      <h2>📊 本教研室提交进度</h2>
+      <div id="progressBody"></div>
+    </div>
+
+    <div class="card">
+      <h2>📌 我已提交的内容</h2>
+      <div id="myContent" class="empty">提交后，这里会显示系统为您保存的内容；刷新或下次打开页面也会自动恢复。</div>
+    </div>
+  </main>
+
+  <footer>月度工作总结与计划生成系统 · 成员端</footer>
+
+  <div class="toast-wrap" id="toasts"></div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const monthInput = $('month');
+    const deptSelect = $('department');
+    const nameSelect = $('memberName');
+    const ID_KEY = 'mrgs_identity';
+    let departments = [];
+    let boot = null;
+
+    function toast(msg, type = 'ok') {
+      const wrap = $('toasts');
+      const el = document.createElement('div');
+      el.className = 'toast ' + type;
+      el.textContent = msg;
+      wrap.appendChild(el);
+      setTimeout(() => el.remove(), 4200);
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // 月份工具：YYYY-MM -> X年X月；计算下月
+    function fmtMonth(m) {
+      if (!m) return '—';
+      const [y, mm] = m.split('-');
+      return `${y}年${Number(mm)}月`;
+    }
+    function nextMonthJS(m) {
+      if (!m) return '';
+      const [y, mm] = m.split('-').map(Number);
+      const d = new Date(y, mm, 1); // 下个月 1 号
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+    function updateMonthLabels() {
+      const m = monthInput.value;
+      const nm = nextMonthJS(m);
+      $('summaryLabel').innerHTML = `<span>${fmtMonth(m)} 工作总结</span> <span class="req">*</span>`;
+      $('planLabel').innerHTML = `<span>${fmtMonth(nm)} 工作计划</span> <span class="req">*</span>`;
+      $('monthMap').textContent = `本月（总结）：${fmtMonth(m)}　　→　　下月（计划）：${fmtMonth(nm)}`;
+    }
+
+    function currentIdentity() {
+      return {
+        month: monthInput.value,
+        departmentId: deptSelect.value,
+        memberName: nameSelect.value,
+      };
+    }
+
+    async function init() {
+      const res = await fetch('/api/bootstrap').then(r => r.json());
+      boot = res;
+      departments = res.departments;
+      monthInput.value = res.currentMonth;
+      updateMonthLabels();
+
+      deptSelect.innerHTML = '<option value="">请选择教研室</option>' +
+        departments.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+      if (!departments.length) deptSelect.innerHTML = '<option value="">暂无教研室，请联系管理员在设置页添加</option>';
+
+      deptSelect.addEventListener('change', () => { fillMembers(); refreshProgress(); });
+      monthInput.addEventListener('change', () => { updateMonthLabels(); loadMySubmission(); refreshProgress(); });
+      nameSelect.addEventListener('change', () => { loadMySubmission(); });
+
+      // 恢复本机记住的身份（无需账号密码）
+      try {
+        const id = JSON.parse(localStorage.getItem(ID_KEY) || 'null');
+        if (id && id.month && id.departmentId && id.memberName) {
+          monthInput.value = id.month;
+          deptSelect.value = id.departmentId;
+          fillMembers();
+          if (nameSelect.querySelector(`option[value="${id.memberName}"]`)) {
+            nameSelect.value = id.memberName;
+          }
+        }
+      } catch (e) { /* 忽略损坏的本地记录 */ }
+
+      await loadMySubmission();
+      await refreshProgress();
+    }
+
+    function fillMembers() {
+      const d = departments.find(x => x.id === deptSelect.value);
+      const saved = nameSelect.value;
+      nameSelect.innerHTML = '<option value="">请选择姓名</option>' +
+        (d ? d.members.map(m => `<option value="${m.name}">${m.name}</option>`).join('') : '');
+      if (saved && nameSelect.querySelector(`option[value="${saved}"]`)) nameSelect.value = saved;
+    }
+
+    async function loadMySubmission() {
+      const id = currentIdentity();
+      $('myContent').innerHTML = '<div class="empty">加载中…</div>';
+      if (!id.month || !id.departmentId || !id.memberName) {
+        $('myContent').innerHTML = '<div class="empty">请选择教研室和姓名，提交后这里会显示系统为您保存的内容。</div>';
+        return;
+      }
+      const res = await fetch(`/api/my-submission?month=${id.month}&departmentId=${id.departmentId}&memberName=${encodeURIComponent(id.memberName)}`).then(r => r.json());
+      const dept = departments.find(d => d.id === id.departmentId);
+      if (res.ok && res.submission) {
+        const s = res.submission;
+        $('myContent').innerHTML = `
+          <div class="preview">
+            <h4>${escapeHtml(s.memberName)} · ${dept ? escapeHtml(dept.name) : ''}</h4>
+            <p><strong>${escapeHtml(fmtMonth(s.month))} 工作总结：</strong></p><p style="white-space:pre-wrap">${escapeHtml(s.summary)}</p>
+            <p style="margin-top:6px"><strong>${escapeHtml(fmtMonth(nextMonthJS(s.month)))} 工作计划：</strong></p><p style="white-space:pre-wrap">${escapeHtml(s.plan)}</p>
+            <p class="time" style="margin-top:8px">提交时间：${escapeHtml(fmt(s.updatedAt || s.submittedAt))}（再次提交可覆盖更新）</p>
+          </div>
+          <div style="margin-top:14px;border-top:1px dashed var(--border);padding-top:12px">
+            <div class="row" style="margin-bottom:8px">
+              <strong style="font-size:14px">✨ 我的个人优化文档</strong>
+              <span class="hint">大模型将您的总结与计划润色成规范文档，可下载、可发送到指定邮箱</span>
+            </div>
+            <div id="myDocArea"><span class="hint">加载中…</span></div>
+          </div>`;
+        loadMyDocStatus();
+      } else {
+        $('myContent').innerHTML = '<div class="empty">本月您还没有提交内容，请在上方填写并提交。</div>';
+      }
+    }
+
+    async function refreshProgress() {
+      const id = currentIdentity();
+      if (!id.month || !id.departmentId) { $('progressCard').style.display = 'none'; return; }
+      const dept = departments.find(d => d.id === id.departmentId);
+      if (!dept || !dept.members.length) { $('progressCard').style.display = 'none'; return; }
+      const res = await fetch(`/api/submissions?month=${id.month}&departmentId=${id.departmentId}`).then(r => r.json());
+      const done = new Set((res.submissions || []).map(s => s.memberName));
+      const total = dept.members.length;
+      const submitted = dept.members.filter(m => done.has(m.name));
+      const missing = dept.members.filter(m => !done.has(m.name));
+      const pct = Math.round(submitted.length / total * 100);
+      const complete = submitted.length === total;
+
+      $('progressCard').style.display = 'block';
+      $('progressBody').innerHTML = `
+        <div class="row between" style="margin-bottom:8px">
+          <div><strong>${escapeHtml(dept.name)} ${escapeHtml(fmtMonth(id.month))}</strong>：已提交 <span class="badge ${complete ? 'green' : 'blue'}">${submitted.length} / ${total}</span></div>
+          ${complete
+            ? '<span class="badge green">✅ 全员已提交</span>'
+            : `<span class="badge gray">还差 ${missing.length} 人：${missing.map(m => escapeHtml(m.name)).join('、')}</span>`}
+        </div>
+        <div class="progress"><div class="progress-bar" style="width:${pct}%"></div></div>
+        ${complete ? `
+          <div class="alert ${boot.settings.autoEnabled && boot.settings.hasCollegeEmail ? 'success' : 'warn'}" style="margin-top:12px;margin-bottom:0">
+            ${boot.settings.autoEnabled && boot.settings.hasCollegeEmail
+              ? '本教研室本月已全部提交，系统会自动汇总生成 Word 文档并发送至二级学院指定邮箱，无需人工操作。'
+              : '本教研室本月已全部提交。提示：系统尚未配置「自动汇总」（需在设置页填写二级学院接收邮箱），请联系管理员配置或到「汇总生成」页手动处理。'}
+          </div>` : ''}`;
+    }
+
+    async function loadMyDocStatus() {
+      const id = currentIdentity();
+      const area = $('myDocArea');
+      if (!area) return;
+      if (!id.month || !id.departmentId || !id.memberName) {
+        area.innerHTML = '<span class="hint">请先选择教研室与姓名</span>';
+        return;
+      }
+      const res = await fetch(`/api/my-doc/status?month=${id.month}&departmentId=${id.departmentId}&memberName=${encodeURIComponent(id.memberName)}`).then(r => r.json());
+      if (res.ok && res.generated) {
+        const dl = `/api/my-doc/download?month=${id.month}&departmentId=${id.departmentId}&memberName=${encodeURIComponent(id.memberName)}`;
+        area.innerHTML = `
+          <div class="row" style="gap:10px;flex-wrap:wrap">
+            <a class="btn sm" href="${dl}">⬇ 下载优化文档</a>
+            <button class="btn sm secondary" onclick="sendMyDoc()">📧 发送到指定邮箱</button>
+            <button class="btn sm secondary" onclick="generateMyDoc()">↻ 重新生成</button>
+          </div>
+          <div class="hint" style="margin-top:6px">
+            生成时间：${escapeHtml(res.generatedAt)}${res.usedLlm ? '（大模型润色）' : '（基础模式，未润色）'}
+            ${res.sentAt ? `｜已发送至 ${escapeHtml(res.sentTo)}（${escapeHtml(res.sentAt)}）` : ''}
+            ${res.note ? `｜${escapeHtml(res.note)}` : ''}
+          </div>`;
+      } else {
+        area.innerHTML = `
+          <div class="row" style="gap:10px;flex-wrap:wrap">
+            <button class="btn sm" onclick="generateMyDoc()">✨ 生成我的优化文档</button>
+            <span class="hint">由大模型将您的总结与计划润色成正式规范的个人文档</span>
+          </div>`;
+      }
+    }
+
+    async function generateMyDoc() {
+      const id = currentIdentity();
+      const area = $('myDocArea');
+      if (!id.month || !id.departmentId || !id.memberName) return toast('请先选择教研室与姓名', 'err');
+      area.innerHTML = '<span class="spinner"></span> <span class="hint">大模型润色生成中，可能需要 1 分钟…</span>';
+      try {
+        const res = await fetch('/api/my-doc/generate', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(id),
+        }).then(r => r.json());
+        if (res.ok) { toast(res.usedLlm ? '个人优化文档已生成（大模型润色）' : '个人文档已生成（基础模式）', 'ok'); loadMyDocStatus(); }
+        else toast(res.error || '生成失败', 'err');
+      } catch (e) {
+        toast('网络错误：' + e.message, 'err');
+        loadMyDocStatus();
+      }
+    }
+
+    async function sendMyDoc() {
+      const id = currentIdentity();
+      const area = $('myDocArea');
+      if (!id.month || !id.departmentId || !id.memberName) return toast('请先选择教研室与姓名', 'err');
+      area.innerHTML = '<span class="spinner"></span> <span class="hint">发送中…</span>';
+      try {
+        const res = await fetch('/api/my-doc/send', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(id),
+        }).then(r => r.json());
+        if (res.ok) { toast(`已发送至 ${res.sentTo}`, 'ok'); loadMyDocStatus(); }
+        else toast(res.error || '发送失败', 'err');
+      } catch (e) {
+        toast('网络错误：' + e.message, 'err');
+        loadMyDocStatus();
+      }
+    }
+
+    $('submitBtn').addEventListener('click', async () => {
+      const btn = $('submitBtn');
+      const payload = {
+        month: monthInput.value,
+        departmentId: deptSelect.value,
+        memberName: nameSelect.value,
+        summary: $('summary').value.trim(),
+        plan: $('plan').value.trim(),
+      };
+      if (!payload.month) return toast('请选择月份', 'err');
+      if (!payload.departmentId) return toast('请选择教研室', 'err');
+      if (!payload.memberName) return toast('请选择姓名', 'err');
+      if (!payload.summary) return toast('请填写本月工作总结', 'err');
+      if (!payload.plan) return toast('请填写下月工作计划', 'err');
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> 提交中…';
+      try {
+        const res = await fetch('/api/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }).then(r => r.json());
+        if (res.ok) {
+          // 在浏览器本地记住身份（不需要账号密码），刷新后自动恢复
+          localStorage.setItem(ID_KEY, JSON.stringify({
+            month: payload.month, departmentId: payload.departmentId, memberName: payload.memberName,
+          }));
+          toast(res.message, 'ok');
+          $('summary').value = '';
+          $('plan').value = '';
+          await loadMySubmission();
+          await refreshProgress();
+          if (payload.summary && payload.plan) {
+            // 若本次提交使教研室全员到齐，后台会自动汇总发送（提交后稍候片刻）
+          }
+        } else {
+          toast(res.error || '提交失败', 'err');
+        }
+      } catch (e) {
+        toast('网络错误：' + e.message, 'err');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '提交';
+      }
+    });
+
+    function fmt(ts) {
+      if (!ts) return '—';
+      const d = new Date(ts), p = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    }
+
+    init().catch(e => toast('初始化失败：' + e.message, 'err'));
+  </script>
+</body>
+</html>
