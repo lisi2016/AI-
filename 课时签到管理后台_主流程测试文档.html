@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>课时签到管理后台 · 主流程测试文档</title>
+<style>
+ body{font-family:-apple-system,"Microsoft YaHei",sans-serif;line-height:1.7;color:#24292f;
+      max-width:1000px;margin:0 auto;padding:28px 20px 60px;background:#fff}
+ h1{font-size:26px;text-align:center;color:#2563eb;margin:10px 0 24px}
+ h2{font-size:20px;margin:34px 0 12px;padding-left:10px;border-left:5px solid #2563eb;color:#1f3a5f}
+ h3{font-size:16px;margin:22px 0 8px;color:#1f3a5f}
+ table{border-collapse:collapse;width:100%;margin:10px 0 16px;font-size:13.5px}
+ th,td{border:1px solid #d0d7de;padding:7px 10px;text-align:left;vertical-align:top}
+ th{background:#f3f6fb;font-weight:700}
+ tr:nth-child(even) td{background:#fafbfc}
+ code{background:#f6f8fa;padding:1px 5px;border-radius:4px;color:#c7254e;font-size:13px}
+ pre{background:#f6f8fa;border:1px solid #e1e4e8;border-radius:8px;padding:12px 14px;overflow:auto;font-size:13px}
+ blockquote{border-left:4px solid #d0d7de;margin:10px 0;padding:4px 12px;color:#57606a}
+ .li{margin:3px 0 3px 18px}
+ .banner{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 16px;margin-bottom:22px;font-size:14px}
+</style></head><body>
+<div class="banner">课堂课时确认与学时统计 · 教务管理后台（Web 端）主流程测试文档 ·
+被测地址 <a href="http://8.138.41.74/admin/">http://8.138.41.74/admin/</a> ·
+执行结果 <b>17 / 17 全部通过</b> · 可下载 <a href="test-report.docx">Word 版</a><br>
+<span style="color:#b45309">访问说明：本页仅供内部查看，访问需认证（账号与密码请向系统管理员索取），请勿外传。</span></div>
+<h1>课时签到系统 · 教务管理后台「主流程」测试文档</h1>
+<table><thead><tr><th>项目</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>被测系统</td><td>课堂课时确认与学时统计 · 教务管理后台（Web 端）</td></tr><tr><td>测试地址</td><td><strong>http://8.138.41.74/admin/</strong></td></tr><tr><td>测试范围</td><td><strong>仅主流程</strong>（从进入系统/登录开始，到退出登录结束）</td></tr><tr><td>不测范围</td><td>边界值、异常分支、并发、性能等非功能项；微信小程序端</td></tr><tr><td>测试工具</td><td><strong>playwright-cli</strong>（<code>open --headed --persistent</code>，真实浏览器驱动）</td></tr><tr><td>测试数据</td><td>系统现有演示数据（2 个教学班、1 门课程、18 条课时记录）</td></tr><tr><td>执行日期</td><td><strong>2026-10-11 23:5x</strong></td></tr><tr><td>执行结果</td><td><strong>17 / 17 全部通过</strong> ✅</td></tr></table>
+<h2>一、系统入口与账号</h2>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>登录方式</td><td>工号/学号 + 密码（<strong>系统无自助注册</strong>，账号由教务处预置）</td></tr><tr><td>教务处账号</td><td><code>ADMIN001</code> / <code>123456</code></td></tr><tr><td>院系管理员账号</td><td><code>2017001</code> / <code>123456</code></td></tr><tr><td>安全策略</td><td>密码连续错误 <strong>5 次锁定 15 分钟</strong>；仅院系管理员与教务处可登录</td></tr><tr><td>说明</td><td>教师与班干部不走本后台，使用微信小程序</td></tr></table>
+<h2>二、主流程概览（本次覆盖路径）</h2>
+<pre>
+进入后台 → 登录页
+   ↓（工号 + 密码）
+登录成功 → 主界面（左侧 5 组 9 项菜单 + 右上角身份区）
+   ↓
+① 学时统计看板 → ② 课时明细 → ③ 课程清单
+   ↓
+④ 数据导入中心（含新增主数据：院系 / 教学班）
+   ↓
+⑤ 报表导出中心 → ⑥ 规则配置 → ⑦ 操作日志
+   ↓
+退出登录 → 回到登录页（刷新后会话已清除）
+</pre>
+<p>菜单结构（代码 <code>admin/js/app.js</code> 的 <code>MENU</code>）：</p>
+<table><thead><tr><th>分组</th><th>菜单项</th><th>路由</th><th>结果</th></tr></thead><tbody></tbody></table>
+<table><tr><td>统计</td><td>学时统计看板</td><td><code>#/dashboard</code></td><td>✅</td></tr><tr><td>统计</td><td>课时明细</td><td><code>#/records</code></td><td>✅</td></tr><tr><td>教学</td><td>课程清单</td><td><code>#/courses</code></td><td>✅</td></tr><tr><td>审核</td><td>补签审核</td><td><code>#/makeup</code></td><td>✅</td></tr><tr><td>审核</td><td>申诉处理</td><td><code>#/appeal</code></td><td>✅</td></tr><tr><td>数据</td><td>数据导入中心</td><td><code>#/import</code></td><td>✅</td></tr><tr><td>数据</td><td>报表导出中心</td><td><code>#/export</code></td><td>✅</td></tr><tr><td>系统</td><td>规则配置</td><td><code>#/config</code></td><td>✅</td></tr><tr><td>系统</td><td>操作日志</td><td><code>#/logs</code></td><td>✅</td></tr></table>
+<h2>三、测试用例与执行结果</h2>
+<h3>T-01 登录页正常展示 —— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>打开 http://8.138.41.74/admin/</td></tr><tr><td>预期</td><td>标题、账号/密码输入框、记住登录、忘记密码、登录按钮、演示账号提示</td></tr><tr><td><strong>实际</strong></td><td>页面标题「教务处管理后台 · 课堂课时确认与学时统计」；含「工号 / 学号」「密码」输入框、「记住登录」（默认勾选）、「忘记密码？」链接、「登 录」按钮；提示 <code>ADMIN001 / 123456</code>、<code>2017001 / 123456</code> 及&quot;连续错误 5 次锁定 15 分钟&quot;</td></tr></table>
+<h3>T-02 错误密码被拒绝 —— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>工号 <code>ADMIN001</code> + 密码 <code>wrong-password-123</code> → 点登录</td></tr><tr><td>预期</td><td>停留登录页并给出行内错误提示</td></tr><tr><td><strong>实际</strong></td><td>行内错误显示「<strong>工号/学号或密码错误（还可尝试 4 次）</strong>」；仍停留登录页，未进入后台（错误计数按预期 +1）</td></tr></table>
+<h3>T-03 正确账号登录成功 —— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>工号 <code>ADMIN001</code> + 密码 <code>123456</code> → 点登录</td></tr><tr><td>预期</td><td>进入主界面；左侧 9 个菜单项；右上角显示身份；默认进入看板</td></tr><tr><td><strong>实际</strong></td><td>登录页隐藏，进入主界面；左侧 <strong>5 组共 9 项</strong>菜单（统计2 / 教学1 / 审核2 / 数据2 / 系统2）；右上角显示角色「教务处」+ 姓名「教务处」+ 头像 + 修改密码 + 退出；默认打开「学时统计看板」</td></tr></table>
+<h3>T-04 学时统计看板正常渲染 —— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>进入 <code>#/dashboard</code></td></tr><tr><td>预期</td><td>概览卡片有数字、排行/趋势有数据、无 JS 报错</td></tr><tr><td><strong>实际</strong></td><td>概览卡片：<strong>已确认学时 32 学时（应计 32 · 完成率 100%）</strong>、待教师确认 0 条、已过期 2 条、异常 3 条、临时调整 0 次、姓名不符 0 条、课时会话 1 条、学时归属口径「实际授课人」；院系排行：护理学院 24 学时、药学院 8 学时；趋势图合计 32 学时 · 2 个周；教师 Top20：唐瑞明 16、李慧 8、王强 8；快捷入口 4 个按钮</td></tr></table>
+<h3>T-05 课时明细可查询 —— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>进入 <code>#/records</code>；查看列表列头与数据</td></tr><tr><td>预期</td><td>有筛选与列表；列含实际授课人、状态等</td></tr><tr><td><strong>实际</strong></td><td>列头含「上课日期 / 节次 / <strong>实际授课人</strong> / <strong>发起人（学委）</strong> / <strong>确认人</strong> / 状态」等（新流程列齐备）；分页与记录数据正常</td></tr></table>
+<h3>T-06 课程清单可查看 —— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>进入 <code>#/courses</code></td></tr><tr><td>预期</td><td>显示班级课程与筛选、编辑入口</td></tr><tr><td><strong>实际</strong></td><td>列头「课程名称 / 授课老师 / 教学班 / 星期 / 节次 / 地点 / 学时」；数据行：<strong>信息技术 · 唐瑞明 · 2025级护理3班 · 周日 第 1-2 节 08:00–09:40 · 实训楼A302 · 2 学时</strong></td></tr></table>
+<h3>T-07 数据导入中心可用（含新增主数据）—— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>进入 <code>#/import</code>；查看类型；下载模板</td></tr><tr><td>预期</td><td>含新增「院系」「教学班」；模板可下载</td></tr><tr><td><strong>实际</strong></td><td><strong>6 种类型齐全且「院系」「教学班」排在最前</strong>：<code>院系 / 教学班 / 授课任务（课表）/ 学生名单 / 工号学号白名单 / 班干部授权</code>；按钮「下载标准模板（CSV）」「导出当前数据（含 ID）」「查看模板列」；当前类型提示&quot;院系 · 列：院系名称\</td><td>院系代码\</td><td>上级院系\</td><td>院系ID&quot;；含重复数据处理说明与「导入历史」区</td></tr></table>
+<h3>T-08 报表导出中心可用 —— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>进入 <code>#/export</code></td></tr><tr><td>预期</td><td>新建导出表单 + 任务列表 + 固定表头说明</td></tr><tr><td><strong>实际</strong></td><td>有报表类型/筛选/「创建导出任务」「重置」；任务列表含历史导出文件下载按钮；表头说明明确 <strong>「课时明细固定 21 列表头（不因筛选缺列）」</strong> 并逐列列出（学期…发起人（学委）…确认人 / 是否临时调整 / 确认人与实际授课人不符…）</td></tr></table>
+<h3>T-09 规则配置可查看 —— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>进入 <code>#/config</code></td></tr><tr><td>预期</td><td>学时系数、确认时限、动态码有效期等配置项</td></tr><tr><td><strong>实际</strong></td><td>显示 3 个学时系数输入框（均 1.0）、确认时限 24（点）、动态码有效期 60（秒）、文本长度 30 等；含下拉选择项；有「保存修改」「重新加载」按钮</td></tr></table>
+<h3>T-10 操作日志可查看 —— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>进入 <code>#/logs</code></td></tr><tr><td>预期</td><td>日志列表 + 筛选 + 哈希链校验</td></tr><tr><td><strong>实际</strong></td><td>列头「时间 / 操作人 / 角色 / 动作 / 目标对象 / IP / 设备 / <strong>哈希</strong>」；共 184 条、10 页；含定时任务日志（<code>job.expire.cron</code>）；有「重新校验」「导出当前页 CSV」「重置」「查询」按钮</td></tr></table>
+<h3>T-11 退出登录 —— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>点右上角「退出」→ 弹窗确认 → 刷新页面</td></tr><tr><td>预期</td><td>回到登录页；刷新后仍停留登录页</td></tr><tr><td><strong>实际</strong></td><td>点击后弹出确认框「退出登录 / 确认退出当前账号？」（含取消、退出）；点「退出」后<strong>回到登录页</strong>（侧栏消失）；<strong>刷新后仍在登录页</strong>（会话已清除）</td></tr></table>
+<h3>T-12 补签审核页正常展示 —— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>重新登录后进入 <code>#/makeup</code></td></tr><tr><td>预期</td><td>页面标题正确；有状态 Tab、申请列表、查询与批量操作入口</td></tr><tr><td><strong>实际</strong></td><td>页面标题「补签审核」；面包屑「首页 / 审核 / 补签审核」；说明文案&quot;通过后原记录置为「已补签」，计入正式学时并在报表中单独标注；驳回必须填写原因&quot;；含 <strong>Tab「待我审核」</strong>、「查询」、「批量通过」（无选中时置灰）、「查看课时明细」、「刷新」</td></tr></table>
+<h3>T-13 申诉处理页正常展示 —— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>进入 <code>#/appeal</code></td></tr><tr><td>预期</td><td>页面标题正确；有申诉列表与刷新入口</td></tr><tr><td><strong>实际</strong></td><td>页面标题「申诉处理」；面包屑「首页 / 审核 / 申诉处理」；含「申诉列表」「刷新」等控件，页面无报错</td></tr></table>
+<h3>T-14 报表导出中心：创建导出任务 —— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>进入 <code>#/export</code>；保持默认（课时明细 / CSV）→ 点「创建导出任务」</td></tr><tr><td>预期</td><td>任务创建成功，列表新增 1 条并可下载</td></tr><tr><td><strong>实际</strong></td><td>点击前任务列表「共 <strong>3</strong> 个任务」，点击后变为「共 <strong>4</strong> 个任务」，新增记录状态为「已完成」并出现对应下载按钮；提示「导出任务已创建」</td></tr></table>
+<h3>T-15 数据导入中心：上传 CSV 并预校验 —— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>进入 <code>#/import</code>（默认类型「院系」）→ 点击拖拽区选择 CSV 文件</td></tr><tr><td>输入</td><td><code>院系名称,院系代码,上级院系,院系ID</code> / <code>测试学院,TEST,,</code></td></tr><tr><td>预期</td><td>自动预校验并给出总行数/可导入/错误行数，通过时提供「确认导入」</td></tr><tr><td><strong>实际</strong></td><td>出现「<strong>预校验结果</strong>」：总行数 <strong>1</strong>、可导入行数 <strong>1</strong>、错误行数 <strong>0</strong>，提示「<strong>全部行校验通过，可执行确认导入</strong>」，并出现可用的「确认导入」按钮（附快照/回滚说明）。<strong>未执行确认导入</strong>，故未改动业务数据</td></tr></table>
+<h3>T-16 数据导入中心：确认导入（院系）—— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>上传 <code>测试学院,TEST</code> 的院系 CSV → 预校验通过 → 点「确认导入」→ 在二次确认弹窗点「确认导入」</td></tr><tr><td>预期</td><td>数据写入成功，导入历史新增一条记录</td></tr><tr><td><strong>实际</strong></td><td>二次确认弹窗提示&quot;将把 <strong>1</strong> 行数据写入系统（类型：院系）……导入前会自动保存受影响数据表的快照，必要时可在导入历史中回滚&quot;；确认后<strong>导入历史新增记录</strong>：<code>2026-10-12 00:07 ｜ 教务处 ｜ 院系 ｜ 已完成 ｜ 总行数 1 ｜ 成功 1 ｜ 失败 0</code>，并提供「回滚本次导入」操作</td></tr></table>
+<h3>T-16b 数据导入中心：回滚本次导入 —— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>在导入历史点「回滚本次导入」→ 确认弹窗点「确认回滚」</td></tr><tr><td>预期</td><td>恢复导入前快照，状态变为「已回滚」，数据回到导入前</td></tr><tr><td><strong>实际</strong></td><td>确认弹窗提示&quot;将使用导入前快照恢复受影响的数据表（任务 IJ00000001）……回滚会覆盖该表当前内容&quot;；确认后记录状态变为「<strong>已回滚</strong>」；<strong>服务端核对</strong> <code>depts.json</code> 仅剩「护理学院 / 药学院」，新增的「测试学院」已被清除，<strong>数据完全恢复导入前状态</strong></td></tr></table>
+<h2>四、执行结果汇总</h2>
+<table><thead><tr><th>用例</th><th>名称</th><th>结果</th></tr></thead><tbody></tbody></table>
+<table><tr><td>T-01</td><td>登录页正常展示</td><td>✅ 通过</td></tr><tr><td>T-02</td><td>错误密码被拒绝</td><td>✅ 通过</td></tr><tr><td>T-03</td><td>正确账号登录成功</td><td>✅ 通过</td></tr><tr><td>T-04</td><td>学时统计看板正常渲染</td><td>✅ 通过</td></tr><tr><td>T-05</td><td>课时明细可查询</td><td>✅ 通过</td></tr><tr><td>T-06</td><td>课程清单可查看</td><td>✅ 通过</td></tr><tr><td>T-07</td><td>数据导入中心可用（含院系/教学班）</td><td>✅ 通过</td></tr><tr><td>T-08</td><td>报表导出中心可用</td><td>✅ 通过</td></tr><tr><td>T-09</td><td>规则配置可查看</td><td>✅ 通过</td></tr><tr><td>T-10</td><td>操作日志可查看</td><td>✅ 通过</td></tr><tr><td>T-11</td><td>退出登录</td><td>✅ 通过</td></tr><tr><td>T-12</td><td>补签审核页正常展示</td><td>✅ 通过</td></tr><tr><td>T-13</td><td>申诉处理页正常展示</td><td>✅ 通过</td></tr><tr><td>T-14</td><td>报表导出中心：创建导出任务</td><td>✅ 通过</td></tr><tr><td>T-15</td><td>数据导入中心：上传 CSV 并预校验</td><td>✅ 通过</td></tr><tr><td>T-16</td><td>数据导入中心：确认导入（院系）</td><td>✅ 通过</td></tr><tr><td>T-16b</td><td>数据导入中心：回滚本次导入</td><td>✅ 通过</td></tr></table>
+<p><strong>合计：17 / 17 通过 —— 主流程验收通过。</strong> ✅</p>
+<h2>五、补充观察</h2>
+<p>1. <strong>无 JS 报错</strong>：除 T-02 故意输错密码产生的 1 次 <code>401</code> 请求（属预期）外，6 次页面跳转未新增任何控制台错误。</p>
+<p>2. <strong>新流程特性已在后台体现</strong>：课时明细含「实际授课人 / 发起人（学委）/ 确认人」列；看板含「临时调整 / 姓名不符 / 课时会话」卡片；导出为 21 列固定表头。</p>
+<p>3. <strong>本次 10-11 上线的主数据导入已生效</strong>：「院系」「教学班」位于导入类型前两位，且排在业务数据之前；上传 CSV 后<strong>自动逐行预校验</strong>，通过才允许「确认导入」。</p>
+<p>4. <strong>测试副作用与清理</strong>：</p>
+<div class='li'>· T-14 产生的导出任务（<code>EJ00000004</code> / <code>records_20261012-000336904.csv</code>）<strong>已删除</strong>，导出任务列表恢复为 3 条；</div>
+<div class='li'>· T-16 导入的「测试学院」<strong>已通过回滚恢复</strong>，<code>depts.json</code> 与导入前一致；</div>
+<div class='li'>· T-15 仅预校验未落库。<strong>最终业务数据与测试前完全一致</strong>。</div>
+<p>5. <strong>测试报告访问保护</strong>：服务器上的报告页已启用 <strong>HTTP Basic Auth</strong>（账号 <code>edu</code>，见交付说明），未认证访问返回 <code>401</code>，不影响后台与其它系统。</p>
+<p>4. <strong>页面快照与执行证据</strong>：保存在仓库 <code>.playwright-cli/</code> 目录（<code>t05_records.yml</code>、<code>t07_import.yml</code>、<code>t11_*.yml</code> 等），可复核。</p>
+<p>5. 自动化脚本：<code>deploy/run-admin-tests.ps1</code>（T-01~T-11）与 <code>deploy/run-admin-tests2.ps1</code>（T-12~T-13），均为 playwright-cli 驱动，可重复执行。</p>
+<h2>六、环境说明</h2>
+<p>1. 后端服务 <code>attendance</code>（systemd），端口 8081，经 Nginx 由 80 端口对外提供 <code>/admin/</code>。</p>
+<p>2. 浏览器访问 <code>http://8.138.41.74</code> 为非 HTTPS（测试环境）。</p>
+<p>3. 测试使用现有演示数据，未清空任何数据；期间仅产生一次失败登录计数（已恢复正常）。</p>
+</body></html>
