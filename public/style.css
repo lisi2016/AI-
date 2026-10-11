@@ -79,6 +79,18 @@ input[type=text], input[type=password], input[type=email], input[type=month], in
   transition: border-color .15s, box-shadow .15s;
 }
 input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }
+
+/* 密码框「显示 / 隐藏」按钮 */
+.pwd-wrap { position: relative; display: block; }
+.pwd-wrap input { padding-right: 64px; }
+.pwd-toggle {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  border: 0; background: transparent; color: var(--primary);
+  font-size: 13px; font-weight: 600; font-family: inherit;
+  cursor: pointer; padding: 6px 10px; border-radius: 6px; line-height: 1;
+}
+.pwd-toggle:hover { background: rgba(37, 99, 235, .08); }
+.pwd-toggle:active { transform: translateY(-50%) scale(.96); }
 textarea { resize: vertical; min-height: 120px; line-height: 1.7; }
 textarea.big { min-height: 260px; }
 

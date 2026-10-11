@@ -37,3 +37,7 @@ Thumbs.db
 .vscode/
 *.swp
 *~
+
+# ----- 测试工具产物（playwright 快照等）-----
+.playwright-cli/
+.playwright/

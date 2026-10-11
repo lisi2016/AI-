@@ -236,7 +236,7 @@
           <div class="grid cols-3">
             <div><label>教研室名称</label><input type="text" data-field="name" data-i="${i}" value="${escapeHtml(d.name)}"></div>
             <div><label>主任姓名</label><input type="text" data-field="headName" data-i="${i}" value="${escapeHtml(d.headName)}"></div>
-            <div><label>主任邮箱（手动发送用）</label><input type="email" data-field="headEmail" data-i="${i}" value="${escapeHtml(d.headEmail)}" placeholder="head@college.edu.cn"></div>
+            <div><label>主任邮箱（个人文档与汇总发送用）</label><input type="email" data-field="headEmail" data-i="${i}" value="${escapeHtml(d.headEmail)}" placeholder="head@college.edu.cn"></div>
           </div>
           <div style="margin-top:10px">
             <label>成员名单（每行一个姓名，全员提交后自动汇总）</label>
@@ -373,6 +373,39 @@
       clearTimeout(savedTimer);
       savedTimer = setTimeout(() => $('savedHint').textContent = '', 2500);
     }
+
+    /* 给所有密码框加「显示 / 隐藏」按钮（管理员登录、修改密码、SMTP、API Key） */
+    function enhancePwdInputs() {
+      document.querySelectorAll('input[type=password]').forEach(function (inp) {
+        if (inp.dataset.pwdReady === '1') return;   // 避免重复包装
+        inp.dataset.pwdReady = '1';
+
+        var wrap = document.createElement('div');
+        wrap.className = 'pwd-wrap';
+        // 把输入框原有的内联间距/宽度转移到外层容器，保证布局不变
+        if (inp.style.marginBottom) { wrap.style.marginBottom = inp.style.marginBottom; inp.style.marginBottom = ''; }
+        if (inp.style.maxWidth) { wrap.style.maxWidth = inp.style.maxWidth; inp.style.maxWidth = ''; }
+
+        inp.parentNode.insertBefore(wrap, inp);
+        wrap.appendChild(inp);
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pwd-toggle';
+        btn.textContent = '显示';
+        btn.setAttribute('aria-label', '显示密码');
+        btn.title = '显示 / 隐藏密码';
+        btn.addEventListener('click', function () {
+          var show = inp.type === 'password';
+          inp.type = show ? 'text' : 'password';
+          btn.textContent = show ? '隐藏' : '显示';
+          btn.setAttribute('aria-label', show ? '隐藏密码' : '显示密码');
+          inp.focus();
+        });
+        wrap.appendChild(btn);
+      });
+    }
+    enhancePwdInputs();
 
     /* 启动：有 token 则直接加载，否则显示登录 */
     if (localStorage.getItem(TOKEN_KEY)) {

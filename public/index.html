@@ -74,8 +74,11 @@
     </div>
 
     <div class="card">
-      <h2>📌 我已提交的内容</h2>
-      <div id="myContent" class="empty">提交后，这里会显示系统为您保存的内容；刷新或下次打开页面也会自动恢复。</div>
+      <div class="row between" style="align-items:center">
+        <h2 style="margin:0">📌 我已提交的内容</h2>
+        <button class="btn secondary sm" id="viewMyBtn" type="button">查看我已提交的内容</button>
+      </div>
+      <div id="myContent" class="empty">提交后这里会显示您本月已提交的内容。为避免他人误看，<strong>刷新页面不会自动显示</strong>；需要查看时请点右上角「查看我已提交的内容」。</div>
     </div>
   </main>
 
@@ -148,20 +151,33 @@
       monthInput.addEventListener('change', () => { updateMonthLabels(); loadMySubmission(); refreshProgress(); });
       nameSelect.addEventListener('change', () => { loadMySubmission(); });
 
-      // 恢复本机记住的身份（无需账号密码）
-      try {
-        const id = JSON.parse(localStorage.getItem(ID_KEY) || 'null');
-        if (id && id.month && id.departmentId && id.memberName) {
-          monthInput.value = id.month;
-          deptSelect.value = id.departmentId;
-          fillMembers();
-          if (nameSelect.querySelector(`option[value="${id.memberName}"]`)) {
-            nameSelect.value = id.memberName;
-          }
+      // 刷新后回到干净状态：**不再自动恢复上次身份、不再自动显示上次提交内容**，
+      // 避免同一台电脑上他人打开页面就看到上一位老师提交的内容。
+      // 需要查看时，点「查看我已提交的内容」按钮（会读取本机记住的身份并拉取）。
+      $('viewMyBtn').addEventListener('click', async () => {
+        let id = currentIdentity();
+        if (!id.month || !id.departmentId || !id.memberName) {
+          try {
+            const saved = JSON.parse(localStorage.getItem(ID_KEY) || 'null');
+            if (saved && saved.month && saved.departmentId && saved.memberName) {
+              monthInput.value = saved.month;
+              deptSelect.value = saved.departmentId;
+              fillMembers();
+              if (nameSelect.querySelector(`option[value="${saved.memberName}"]`)) {
+                nameSelect.value = saved.memberName;
+              }
+              id = currentIdentity();
+            }
+          } catch (e) { /* 忽略损坏的本地记录 */ }
         }
-      } catch (e) { /* 忽略损坏的本地记录 */ }
+        if (!id.month || !id.departmentId || !id.memberName) {
+          toast('请先选择教研室与姓名，再查看已提交内容', 'err');
+          return;
+        }
+        await loadMySubmission();
+        await refreshProgress();
+      });
 
-      await loadMySubmission();
       await refreshProgress();
     }
 
