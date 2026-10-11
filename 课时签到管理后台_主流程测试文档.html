@@ -20,11 +20,11 @@
 </style></head><body>
 <div class="banner">课堂课时确认与学时统计 · 教务管理后台（Web 端）主流程测试文档 ·
 被测地址 <a href="http://8.138.41.74/admin/">http://8.138.41.74/admin/</a> ·
-执行结果 <b>21 / 21 全部通过</b> · 可下载 <a href="/api/v1/test-report/docx">Word 版</a><br>
+执行结果 <b>25 / 25 全部通过</b> · 可下载 <a href="/api/v1/test-report/docx">Word 版</a><br>
 <span style="color:#b45309">访问说明：本页需登录后台后查看（右上角「测试报告」），请勿外传。</span></div>
 <h1>课时签到系统 · 教务管理后台「主流程」测试文档</h1>
 <table><thead><tr><th>项目</th><th>内容</th></tr></thead><tbody></tbody></table>
-<table><tr><td>被测系统</td><td>课堂课时确认与学时统计 · 教务管理后台（Web 端）</td></tr><tr><td>测试地址</td><td><strong>http://8.138.41.74/admin/</strong></td></tr><tr><td>测试范围</td><td><strong>仅主流程</strong>（从进入系统/登录开始，到退出登录结束）</td></tr><tr><td>不测范围</td><td>边界值、异常分支、并发、性能等非功能项；微信小程序端</td></tr><tr><td>测试工具</td><td><strong>playwright-cli</strong>（<code>open --headed --persistent</code>，真实浏览器驱动）</td></tr><tr><td>测试数据</td><td>系统现有演示数据（2 个教学班、1 门课程、18 条课时记录）</td></tr><tr><td>执行日期</td><td><strong>2026-10-11 23:5x</strong></td></tr><tr><td>执行结果</td><td><strong>21 / 21 全部通过</strong> ✅</td></tr></table>
+<table><tr><td>被测系统</td><td>课堂课时确认与学时统计 · 教务管理后台（Web 端）</td></tr><tr><td>测试地址</td><td><strong>http://8.138.41.74/admin/</strong></td></tr><tr><td>测试范围</td><td><strong>仅主流程</strong>（从进入系统/登录开始，到退出登录结束）</td></tr><tr><td>不测范围</td><td>边界值、异常分支、并发、性能等非功能项；微信小程序端</td></tr><tr><td>测试工具</td><td><strong>playwright-cli</strong>（<code>open --headed --persistent</code>，真实浏览器驱动）</td></tr><tr><td>测试数据</td><td>系统现有演示数据（2 个教学班、1 门课程、18 条课时记录）</td></tr><tr><td>执行日期</td><td><strong>2026-10-11 23:5x</strong></td></tr><tr><td>执行结果</td><td><strong>25 / 25 全部通过</strong> ✅</td></tr></table>
 <h2>一、系统入口与账号</h2>
 <table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
 <table><tr><td>登录方式</td><td>工号/学号 + 密码（<strong>系统无自助注册</strong>，账号由教务处预置）</td></tr><tr><td>教务处账号</td><td><code>ADMIN001</code> / <code>123456</code></td></tr><tr><td>院系管理员账号</td><td><code>2017001</code> / <code>123456</code></td></tr><tr><td>安全策略</td><td>密码连续错误 <strong>5 次锁定 15 分钟</strong>；仅院系管理员与教务处可登录</td></tr><tr><td>说明</td><td>教师与班干部不走本后台，使用微信小程序</td></tr></table>
@@ -109,21 +109,38 @@
 <h3>T-20 测试报告访问控制 —— ✅ 通过</h3>
 <table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
 <table><tr><td>步骤</td><td>① 未登录访问报告接口；② 登录后访问；③ 访问原公开静态路径；④ 访问后台首页</td></tr><tr><td>预期</td><td>未登录被拒；登录可读；公开路径失效；后台正常</td></tr><tr><td><strong>实际</strong></td><td>① 无 token → <strong>401</strong>；② 登录后 HTML <strong>200</strong>（内容含 20/20）、DOCX <strong>200</strong>（PK 头、43 KB）；③ 公网 <code>/admin/test-report.html</code> → <strong>404</strong>；④ <code>/admin/</code> → <strong>200</strong>。报告改为后台右上角「测试报告」按钮打开，并记入操作日志</td></tr></table>
+<h3>T-21 学生名单导入预校验 —— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>导入页切换到「<strong>学生名单</strong>」→ 上传 <code>学号,姓名,教学班</code> + <code>2025030101,李思琪,2025级护理3班</code></td></tr><tr><td>预期</td><td>自动预校验并给出统计</td></tr><tr><td><strong>实际</strong></td><td>当前类型提示「学生名单 · 列：学号\</td><td>姓名\</td><td>教学班」；预校验结果：总行数 <strong>1</strong>、可导入 <strong>1</strong>、错误 <strong>0</strong>，提示「全部行校验通过，可执行确认导入」</td></tr></table>
+<h3>T-22 班干部授权导入预校验 —— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>导入页切换到「<strong>班干部授权</strong>」→ 上传 <code>教学班,学号,姓名,职务,优先级</code> + <code>2025级护理3班,2025030117,张一鸣,学委,1</code></td></tr><tr><td>预期</td><td>自动预校验并给出统计</td></tr><tr><td><strong>实际</strong></td><td>当前类型提示「班干部授权 · 列：教学班\</td><td>学号\</td><td>姓名\</td><td>职务\</td><td>优先级」；预校验结果：总行数 <strong>1</strong>、可导入 <strong>1</strong>、错误 <strong>0</strong>，提示「全部行校验通过，可执行确认导入」</td></tr></table>
+<h3>T-23 修改密码 —— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>以 <code>2017001</code> 登录 → 右上角「修改密码」→ 填写原密码/新密码/确认新密码 → 保存 → 用新密码重新登录</td></tr><tr><td>预期</td><td>弹窗正常；修改成功后旧密码失效、新密码可登录</td></tr><tr><td><strong>实际</strong></td><td>弹窗显示「原密码 / 新密码（6–64 位，不含空格）/ 确认新密码」及说明&quot;密码仅保存在服务端（SHA-256 摘要）&quot;；提交后弹窗关闭；<strong>旧密码 <code>123456</code> 登录被拒（40001）</strong>、<strong>新密码登录成功</strong> → 修改生效。测试后已把 <code>2017001</code> 密码<strong>还原为 <code>123456</code></strong> 并验证</td></tr></table>
+<h3>T-24 登录失败锁定 —— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>对 <code>2017001</code> 连续输入错误密码</td></tr><tr><td>预期</td><td>提示剩余次数，达到阈值后锁定并拒绝（含正确密码）</td></tr><tr><td><strong>实际</strong></td><td>依次提示「还可尝试 3 次 / 2 次 / 1 次」，随后返回 <strong>403（40301）</strong>「密码连续错误 5 次，账号已锁定，请 15 分钟后重试（或联系教务处解锁）」；<strong>此后用正确密码也被拒绝</strong>；测试后已清除失败计数并验证两账号恢复正常登录</td></tr></table>
+<h3>T-25 后台「测试报告」入口 —— ✅ 通过</h3>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody></tbody></table>
+<table><tr><td>步骤</td><td>登录后台 → 点击右上角「测试报告」</td></tr><tr><td>预期</td><td>打开报告页（带鉴权），可下载 Word</td></tr><tr><td><strong>实际</strong></td><td>新标签页打开「课时签到管理后台 · 主流程测试文档」，页首显示「执行结果 <strong>21 / 21 全部通过</strong>」与「Word 版」下载链接，正文表格完整渲染</td></tr></table>
 <h2>四、执行结果汇总</h2>
 <table><thead><tr><th>用例</th><th>名称</th><th>结果</th></tr></thead><tbody></tbody></table>
-<table><tr><td>T-01</td><td>登录页正常展示</td><td>✅ 通过</td></tr><tr><td>T-02</td><td>错误密码被拒绝</td><td>✅ 通过</td></tr><tr><td>T-03</td><td>正确账号登录成功</td><td>✅ 通过</td></tr><tr><td>T-04</td><td>学时统计看板正常渲染</td><td>✅ 通过</td></tr><tr><td>T-05</td><td>课时明细可查询</td><td>✅ 通过</td></tr><tr><td>T-06</td><td>课程清单可查看</td><td>✅ 通过</td></tr><tr><td>T-07</td><td>数据导入中心可用（含院系/教学班）</td><td>✅ 通过</td></tr><tr><td>T-08</td><td>报表导出中心可用</td><td>✅ 通过</td></tr><tr><td>T-09</td><td>规则配置可查看</td><td>✅ 通过</td></tr><tr><td>T-10</td><td>操作日志可查看</td><td>✅ 通过</td></tr><tr><td>T-11</td><td>退出登录</td><td>✅ 通过</td></tr><tr><td>T-12</td><td>补签审核页正常展示</td><td>✅ 通过</td></tr><tr><td>T-13</td><td>申诉处理页正常展示</td><td>✅ 通过</td></tr><tr><td>T-14</td><td>报表导出中心：创建导出任务</td><td>✅ 通过</td></tr><tr><td>T-15</td><td>数据导入中心：上传 CSV 并预校验</td><td>✅ 通过</td></tr><tr><td>T-16</td><td>数据导入中心：确认导入（院系）</td><td>✅ 通过</td></tr><tr><td>T-16b</td><td>数据导入中心：回滚本次导入</td><td>✅ 通过</td></tr><tr><td>T-17</td><td>白名单导入预校验</td><td>✅ 通过</td></tr><tr><td>T-18</td><td>课表导入预校验</td><td>✅ 通过</td></tr><tr><td>T-19</td><td>导出文件内容校验（21 列）</td><td>✅ 通过</td></tr><tr><td>T-20</td><td>测试报告访问控制</td><td>✅ 通过</td></tr></table>
-<p><strong>合计：21 / 21 通过 —— 主流程验收通过。</strong> ✅</p>
+<table><tr><td>T-01</td><td>登录页正常展示</td><td>✅ 通过</td></tr><tr><td>T-02</td><td>错误密码被拒绝</td><td>✅ 通过</td></tr><tr><td>T-03</td><td>正确账号登录成功</td><td>✅ 通过</td></tr><tr><td>T-04</td><td>学时统计看板正常渲染</td><td>✅ 通过</td></tr><tr><td>T-05</td><td>课时明细可查询</td><td>✅ 通过</td></tr><tr><td>T-06</td><td>课程清单可查看</td><td>✅ 通过</td></tr><tr><td>T-07</td><td>数据导入中心可用（含院系/教学班）</td><td>✅ 通过</td></tr><tr><td>T-08</td><td>报表导出中心可用</td><td>✅ 通过</td></tr><tr><td>T-09</td><td>规则配置可查看</td><td>✅ 通过</td></tr><tr><td>T-10</td><td>操作日志可查看</td><td>✅ 通过</td></tr><tr><td>T-11</td><td>退出登录</td><td>✅ 通过</td></tr><tr><td>T-12</td><td>补签审核页正常展示</td><td>✅ 通过</td></tr><tr><td>T-13</td><td>申诉处理页正常展示</td><td>✅ 通过</td></tr><tr><td>T-14</td><td>报表导出中心：创建导出任务</td><td>✅ 通过</td></tr><tr><td>T-15</td><td>数据导入中心：上传 CSV 并预校验</td><td>✅ 通过</td></tr><tr><td>T-16</td><td>数据导入中心：确认导入（院系）</td><td>✅ 通过</td></tr><tr><td>T-16b</td><td>数据导入中心：回滚本次导入</td><td>✅ 通过</td></tr><tr><td>T-17</td><td>白名单导入预校验</td><td>✅ 通过</td></tr><tr><td>T-18</td><td>课表导入预校验</td><td>✅ 通过</td></tr><tr><td>T-19</td><td>导出文件内容校验（21 列）</td><td>✅ 通过</td></tr><tr><td>T-20</td><td>测试报告访问控制</td><td>✅ 通过</td></tr><tr><td>T-21</td><td>学生名单导入预校验</td><td>✅ 通过</td></tr><tr><td>T-22</td><td>班干部授权导入预校验</td><td>✅ 通过</td></tr><tr><td>T-23</td><td>修改密码</td><td>✅ 通过</td></tr><tr><td>T-24</td><td>登录失败锁定</td><td>✅ 通过</td></tr><tr><td>T-25</td><td>后台「测试报告」入口</td><td>✅ 通过</td></tr></table>
+<p><strong>合计：25 / 25 通过 —— 主流程验收通过。</strong> ✅</p>
 <h2>五、补充观察</h2>
-<p>1. <strong>无 JS 报错</strong>：除 T-02 故意输错密码产生的 1 次 <code>401</code> 请求（属预期）外，6 次页面跳转未新增任何控制台错误。</p>
+<p>1. <strong>无 JS 报错</strong>：除 T-02 故意输错密码产生的 1 次 <code>401</code> 请求（属预期）外，页面跳转未新增控制台错误。</p>
 <p>2. <strong>新流程特性已在后台体现</strong>：课时明细含「实际授课人 / 发起人（学委）/ 确认人」列；看板含「临时调整 / 姓名不符 / 课时会话」卡片；导出为 21 列固定表头。</p>
 <p>3. <strong>本次 10-11 上线的主数据导入已生效</strong>：「院系」「教学班」位于导入类型前两位，且排在业务数据之前；上传 CSV 后<strong>自动逐行预校验</strong>，通过才允许「确认导入」。</p>
-<p>4. <strong>测试副作用与清理</strong>：</p>
-<div class='li'>· T-14 产生的导出任务（<code>EJ00000004</code> / <code>records_20261012-000336904.csv</code>）<strong>已删除</strong>，导出任务列表恢复为 3 条；</div>
+<p>4. <strong>测试副作用与清理</strong>（最终业务数据与测试前一致）：</p>
+<div class='li'>· T-14、T-19 产生的导出任务（<code>EJ00000004</code>、<code>EJ00000005</code> 及其 CSV）<strong>已删除</strong>，导出任务列表恢复为 3 条；</div>
 <div class='li'>· T-16 导入的「测试学院」<strong>已通过回滚恢复</strong>，<code>depts.json</code> 与导入前一致；</div>
-<div class='li'>· T-15 仅预校验未落库。<strong>最终业务数据与测试前完全一致</strong>。</div>
+<div class='li'>· T-15、T-17、T-18、T-21、T-22 仅做预校验未落库；</div>
+<div class='li'>· T-23 修改的密码<strong>已还原为 <code>123456</code></strong>；T-24 产生的失败计数<strong>已清除</strong>，两账号均恢复正常登录。</div>
 <p>5. <strong>测试报告访问方式（已加固）</strong>：报告<strong>不再公开</strong>（公网 <code>/admin/test-report.html</code> 返回 <strong>404</strong>）；改为<strong>登录后台后点击右上角「测试报告」按钮</strong>查看。对应接口 <code>/api/v1/test-report/{html|docx}</code> <strong>必须携带登录令牌</strong>，未登录返回 <strong>401</strong>；查看/下载均写入操作日志。文件存放于服务端私有目录 <code>private/</code>，不经静态资源暴露。</p>
-<p>4. <strong>页面快照与执行证据</strong>：保存在仓库 <code>.playwright-cli/</code> 目录（<code>t05_records.yml</code>、<code>t07_import.yml</code>、<code>t11_*.yml</code> 等），可复核。</p>
-<p>5. 自动化脚本：<code>deploy/run-admin-tests.ps1</code>（T-01~T-11）与 <code>deploy/run-admin-tests2.ps1</code>（T-12~T-13），均为 playwright-cli 驱动，可重复执行。</p>
+<p>6. <strong>新发现（部署注意事项）</strong>：前端静态资源带 <code>?v=</code> 版本号，若<strong>部署前端后不刷新页面</strong>，浏览器可能继续使用缓存的旧 <code>app.js</code>，表现为&quot;按钮点了没反应&quot;（本次测试中曾出现，强制刷新后恢复正常）。<strong>建议每次前端变更后同步提升 <code>?v=</code> 版本号</strong>，用户端强制刷新一次。</p>
+<p>7. <strong>页面快照与执行证据</strong>：保存在仓库 <code>.playwright-cli/</code> 目录（<code>t05_records.yml</code>、<code>t07_import.yml</code>、<code>t21</code>~<code>t25</code> 等），可复核。</p>
+<p>8. <strong>自动化脚本</strong>：<code>deploy/run-admin-tests.ps1</code>~<code>run-admin-tests6.ps1</code>，均为 playwright-cli 驱动，可重复执行。</p>
 <h2>六、环境说明</h2>
 <p>1. 后端服务 <code>attendance</code>（systemd），端口 8081，经 Nginx 由 80 端口对外提供 <code>/admin/</code>。</p>
 <p>2. 浏览器访问 <code>http://8.138.41.74</code> 为非 HTTPS（测试环境）。</p>
