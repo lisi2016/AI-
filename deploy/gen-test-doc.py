@@ -146,6 +146,8 @@ for raw in lines:
 if tb: out.append("<table>" + "".join("<tr>" + "".join("<td>%s</td>" % inline(c) for c in r) + "</tr>" for r in tb) + "</table>")
 if incode: out.append("</pre>")
 
+_m = re.search(r"合计：\s*(\d+)\s*/\s*(\d+)\s*通过", md)
+TOTAL = (_m.group(2) + " / " + _m.group(2)) if _m else "—"
 page = """<!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -168,9 +170,10 @@ page = """<!DOCTYPE html>
 </style></head><body>
 <div class="banner">课堂课时确认与学时统计 · 教务管理后台（Web 端）主流程测试文档 ·
 被测地址 <a href="http://8.138.41.74/admin/">http://8.138.41.74/admin/</a> ·
-执行结果 <b>17 / 17 全部通过</b> · 可下载 <a href="test-report.docx">Word 版</a><br>
-<span style="color:#b45309">访问说明：本页仅供内部查看，访问需认证（账号与密码请向系统管理员索取），请勿外传。</span></div>
+执行结果 <b>__TOTAL__ 全部通过</b> · 可下载 <a href="/api/v1/test-report/docx">Word 版</a><br>
+<span style="color:#b45309">访问说明：本页需登录后台后查看（右上角「测试报告」），请勿外传。</span></div>
 """ + "\n".join(out) + "\n</body></html>"
+page = page.replace("__TOTAL__", TOTAL)
 open(HTML, "w", encoding="utf-8").write(page)
 print("HTML 已生成：" + HTML)
 print("段落 %d / 表格 %d" % (len(doc.paragraphs), len(doc.tables)))
