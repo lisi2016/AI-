@@ -1,0 +1,108 @@
+<!-- 我的课程：班干部维护本班课程清单（录入一次、长期保留） -->
+
+<!-- 未绑定：给出绑定引导，不静默失败 -->
+<block wx:if="{{ready && needBind}}">
+  <view class="state-box">
+    <view class="state-box__icon">🔒</view>
+    <view class="state-box__title">尚未绑定工号/学号</view>
+    <view class="state-box__desc">{{bindHint || '绑定后才能维护本班的课程清单'}}</view>
+  </view>
+  <view class="btn-primary" bindtap="goBind">去绑定</view>
+</block>
+
+<block wx:else>
+  <!-- 状态筛选 + 计数 -->
+  <view class="seg">
+    <view wx:for="{{statusTabs}}" wx:key="*this"
+          class="seg__item {{statusIndex === index ? 'is-on' : ''}}"
+          data-index="{{index}}" bindtap="switchStatus">{{item}}</view>
+  </view>
+  <view class="tipbar tipbar--info">
+    共 {{summary.total}} 门课程（使用中 {{summary.active}} · 已归档 {{summary.archived}}）。
+    这里录入一次，之后每次上课从首页「今日课程」直接出示二维码，无需重复录入。
+  </view>
+
+  <view class="tipbar tipbar--error" wx:if="{{loadError}}">{{loadError}}</view>
+
+  <block wx:if="{{!readonly}}">
+    <view class="btn-primary" wx:if="{{!form.show}}" bindtap="openCreate">新增课程</view>
+  </block>
+
+  <!-- 新增 / 编辑表单 -->
+  <block wx:if="{{form.show}}">
+    <view class="sec-title">{{form.mode === 'edit' ? '编辑课程' : '新增课程'}}</view>
+    <view class="tipbar tipbar--error" wx:if="{{form.error}}">{{form.error}}</view>
+    <view class="card">
+      <view class="form-row">
+        <view class="form-row__label">课程名称<text class="req">*</text></view>
+        <input class="form-row__value" maxlength="60" placeholder="如：信息技术" placeholder-class="form-row__placeholder"
+               value="{{form.courseName}}" bindinput="onCourseName" />
+      </view>
+      <view class="form-row">
+        <view class="form-row__label">授课老师<text class="req">*</text></view>
+        <input class="form-row__value" maxlength="30" placeholder="如：唐瑞明" placeholder-class="form-row__placeholder"
+               value="{{form.teacherName}}" bindinput="onTeacherName" />
+      </view>
+      <view class="form-row">
+        <view class="form-row__label">星期</view>
+        <picker class="form-row__value" mode="selector" range="{{weekdayRange}}" value="{{form.weekdayIndex}}" bindchange="pickWeekday">
+          <view>{{weekdayRange[form.weekdayIndex]}}</view>
+        </picker>
+      </view>
+      <view class="form-row">
+        <view class="form-row__label">节次</view>
+        <picker class="form-row__value" mode="selector" range="{{sectionRange}}" value="{{form.sectionIndex}}" bindchange="pickSection">
+          <view>{{sectionRange[form.sectionIndex]}}</view>
+        </picker>
+      </view>
+      <view class="form-row">
+        <view class="form-row__label">上课地点</view>
+        <input class="form-row__value" maxlength="60" placeholder="如：实训楼A302" placeholder-class="form-row__placeholder"
+               value="{{form.place}}" bindinput="onPlace" />
+      </view>
+      <view class="form-row">
+        <view class="form-row__label">学时</view>
+        <input class="form-row__value" type="digit" maxlength="3" placeholder="默认 2" placeholder-class="form-row__placeholder"
+               value="{{form.hours}}" bindinput="onHours" />
+      </view>
+    </view>
+    <view class="btn-primary" bindtap="submitForm">{{submitting ? '保存中…' : '保存'}}</view>
+    <view class="btn-ghost" bindtap="closeForm">取消</view>
+    <view class="foot-note">课程名称与授课老师必填；内容会做长度与合规校验，后端返回的提示会原样显示在这里。</view>
+  </block>
+
+  <!-- 列表 -->
+  <view class="sec-title">课程清单</view>
+  <view class="card">
+    <view class="state-box" wx:if="{{empty && !loading}}">
+      <view class="state-box__icon">📚</view>
+      <view class="state-box__title">{{statusIndex === 0 ? '还没有课程' : '这个筛选下没有课程'}}</view>
+      <view class="state-box__desc">{{statusIndex === 0 ? '点上方「新增课程」录入本班课表' : '可切到「使用中」查看在用课程'}}</view>
+    </view>
+
+    <view class="course" wx:for="{{list}}" wx:key="id">
+      <view class="course__head">
+        <view class="course__name">{{item.courseName}}</view>
+        <view class="tag tag--{{item.status}}">{{item.statusText}}</view>
+      </view>
+      <view class="course__line">{{item.teacherName}}<block wx:if="{{item.teacherNo}}">（{{item.teacherNo}}）</block></view>
+      <view class="course__line">
+        <block wx:if="{{item.weekdayText}}">{{item.weekdayText}} </block><block wx:else>未排课 </block>
+        <block wx:if="{{item.section}}">{{item.section}} 节 </block>
+        <block wx:if="{{item.time && item.startTime}}">{{item.time}} </block>
+        · {{item.hours}} 学时
+      </view>
+      <view class="course__line" wx:if="{{item.place}}">地点：{{item.place}}</view>
+      <view class="course__ops" wx:if="{{!readonly && item.status === 'active'}}">
+        <view class="op" data-id="{{item.id}}" bindtap="openEdit">编辑</view>
+        <view class="op op--danger" data-id="{{item.id}}" data-name="{{item.courseName}}" bindtap="archive">归档</view>
+      </view>
+      <view class="course__ops" wx:elif="{{!readonly}}">
+        <view class="op op--muted">已归档（如需恢复请联系管理员）</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="foot-note" wx:if="{{readonly}}">教师对本班课程清单为只读视图；如需修改请联系班级学委。</view>
+  <view class="foot-note">本系统不采集定位。</view>
+</block>

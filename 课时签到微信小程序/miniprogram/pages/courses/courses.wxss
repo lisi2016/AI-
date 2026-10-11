@@ -1,0 +1,24 @@
+/* 我的课程：课程清单列表 + 新增/编辑表单 */
+/* 说明：.seg / .op / .req 等通用样式在 app.wxss（全局）中定义 */
+
+.course {
+  padding: 26rpx 32rpx;
+  border-bottom: 1rpx solid #E6E8EB;
+}
+.course:last-child { border-bottom: none; }
+.course__head {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.course__name { flex: 1; font-size: 30rpx; font-weight: 600; }
+.course__line {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #5B6066;
+}
+.course__ops {
+  display: flex;
+  gap: 24rpx;
+  margin-top: 18rpx;
+}

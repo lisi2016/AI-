@@ -1,0 +1,47 @@
+<!-- 课时记录：GET /sessions 分页 + 状态筛选（待教师确认 / 已确认 / 已过期） -->
+
+<view class="seg">
+  <view wx:for="{{tabs}}" wx:key="*this"
+        class="seg__item {{activeTab === index ? 'is-on' : ''}}"
+        data-index="{{index}}" bindtap="switchTab">{{item}}<text class="seg__badge" wx:if="{{badges[index]}}">{{badges[index]}}</text></view>
+</view>
+
+<!-- 未登录：给出绑定引导，不静默空白 -->
+<block wx:if="{{needBind}}">
+  <view class="state-box">
+    <view class="state-box__icon">🔒</view>
+    <view class="state-box__title">尚未绑定工号/学号</view>
+    <view class="state-box__desc">绑定后按你的身份展示对应课时记录</view>
+  </view>
+  <view class="btn-primary" bindtap="goBind">去绑定</view>
+</block>
+
+<block wx:else>
+  <view class="tipbar tipbar--error" wx:if="{{loadError}}">{{loadError}}</view>
+
+  <view wx:if="{{empty && !loading}}" class="state-box">
+    <view class="state-box__icon">📭</view>
+    <view class="state-box__title">暂无课时记录</view>
+    <view class="state-box__desc">班干部出示二维码、教师确认后会出现在这里</view>
+  </view>
+
+  <block wx:else>
+    <view class="card">
+      <view class="cell" wx:for="{{list}}" wx:key="id" data-id="{{item.id}}" bindtap="openDetail">
+        <view class="cell__main">
+          <view class="cell__title">{{item.courseName}} · {{item.className}}</view>
+          <view class="cell__desc">
+            {{item.date}} {{item.section}} · 实际授课人 {{item.teacherName}} · {{item.hours}}学时
+            <block wx:if="{{item.isTempAdjusted}}"> · 临时调整</block>
+            <block wx:if="{{item.status === 'done' && item.confirmedName}}"> · {{item.confirmedName}} 已确认</block>
+            <block wx:if="{{item.confirmNameMismatch}}"> · 代课（确认人≠实际授课人）</block>
+          </view>
+        </view>
+        <view class="tag tag--{{item.status}}">{{item.statusText}}</view>
+      </view>
+    </view>
+    <view class="sec-title">{{summary}}</view>
+    <view class="list-foot" wx:if="{{loadingMore}}">正在加载更多…</view>
+    <view class="list-foot" wx:elif="{{noMore && list.length}}">没有更多了</view>
+  </block>
+</block>

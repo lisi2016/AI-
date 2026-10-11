@@ -1,0 +1,8 @@
+/* 课时详情 / 核对页共用样式（.head / .foot-note 等）已在 app.wxss 中定义 */
+/* 本页仅保留摘要文本样式 */
+
+.summary {
+  font-size: 28rpx;
+  line-height: 1.7;
+  color: #3A3F45;
+}

@@ -1,0 +1,72 @@
+<!-- 课时确认页：扫码/口令核验 → 展示本次课时信息 → 点一下「确认本次课时」 -->
+<!-- 新流程不填表、不手写签名；不采集定位 -->
+
+<view class="tipbar tipbar--info" wx:if="{{verifyState === 'loading'}}">
+  正在核验动态码{{codeInput ? '（口令 ' + codeInput + '）' : ''}}…
+</view>
+
+<!-- 核验失败：明确中文提示 + 引导班干部刷新 + 可操作按钮 -->
+<block wx:if="{{verifyState === 'error'}}">
+  <view class="tipbar tipbar--error">{{verifyError}}</view>
+  <view class="tipbar" wx:if="{{errorAdvice}}">{{errorAdvice}}</view>
+  <view class="btn-primary" bindtap="retryVerify">重新核验</view>
+  <view class="btn-ghost" bindtap="rescan">返回首页重新扫码 / 输口令</view>
+</block>
+
+<!-- 旧课表码：不再填表，引导班干部用新流程重新出示 -->
+<block wx:if="{{verifyState === 'legacy'}}">
+  <view class="tipbar tipbar--error">
+    这是旧版课表动态码：新流程已不再需要教师填表与手写签名，请班干部在首页「今日课程」里点「出示二维码」重新出示本次课时二维码。
+  </view>
+  <view class="btn-primary" bindtap="rescan">返回首页重新扫码</view>
+</block>
+
+<!-- 本次课时信息（教师确认前核对） -->
+<block wx:if="{{verifyState === 'session' || verifyState === 'done'}}">
+  <view class="tipbar tipbar--info" wx:if="{{verifyState === 'session'}}">
+    已核验{{verifyBy === 'code' ? '（6 位口令）' : (verifyBy === 'qrContent' ? '（扫码）' : '（动态码 ID）')}}，请核对本次课时信息后点下方「确认本次课时」。
+  </view>
+  <view class="tipbar tipbar--info" wx:else>本次课时已确认，学时已计入实际授课人。</view>
+
+  <view class="head">
+    <view class="head__course">{{session.courseName}}</view>
+    <view class="head__sub">{{session.className}} · {{session.teachDate || session.date}} · {{session.section}}<block wx:if="{{session.time}}"> {{session.time}}</block></view>
+    <view class="tag tag--{{session.status}} head__tag">{{session.statusText}}</view>
+  </view>
+
+  <view class="sec-title">本次课时信息</view>
+  <view class="card">
+    <view class="form-row"><view class="form-row__label">课程名</view><view class="form-row__value">{{session.courseName}}</view></view>
+    <view class="form-row"><view class="form-row__label">实际授课人</view><view class="form-row__value">{{session.teacherName}}<text wx:if="{{session.isTempAdjusted}}" class="badge-temp">临时调整</text></view></view>
+    <view class="form-row"><view class="form-row__label">班级</view><view class="form-row__value">{{session.className}}</view></view>
+    <view class="form-row"><view class="form-row__label">上课日期</view><view class="form-row__value">{{session.teachDate || session.date}}</view></view>
+    <view class="form-row"><view class="form-row__label">节次</view><view class="form-row__value">{{session.section}}<block wx:if="{{session.time}}">　{{session.time}}</block></view></view>
+    <view class="form-row"><view class="form-row__label">地点</view><view class="form-row__value">{{session.place || '—'}}</view></view>
+    <view class="form-row"><view class="form-row__label">学时</view><view class="form-row__value">{{session.hours}} 学时</view></view>
+    <view class="form-row"><view class="form-row__label">发起人</view><view class="form-row__value">{{session.initiatorDuty}} {{session.initiatorName}}</view></view>
+    <view class="form-row"><view class="form-row__label">动态码</view><view class="form-row__value">{{codeId || '—'}}</view></view>
+  </view>
+
+  <!-- 代课提示：确认人 ≠ 实际授课人仍可确认，学时按实际授课人统计 -->
+  <view class="tipbar" wx:if="{{verifyState === 'session'}}">
+    若本次为代课（你与实际授课人不同名），仍可点确认：系统会标记「确认人≠实际授课人」，学时按实际授课人「{{session.teacherName}}」计入。
+  </view>
+
+  <view class="btn-primary" wx:if="{{verifyState === 'session'}}" bindtap="confirm">
+    {{confirming ? '确认中…' : '确认本次课时'}}
+  </view>
+
+  <!-- 确认结果（含代课情形） -->
+  <view class="card" wx:if="{{verifyState === 'done' && confirmResult}}">
+    <view class="form-row"><view class="form-row__label">结果</view><view class="form-row__value">已确认本次课时</view></view>
+    <view class="form-row"><view class="form-row__label">确认人</view><view class="form-row__value">{{confirmResult.confirmedName}}</view></view>
+    <view class="form-row"><view class="form-row__label">确认时间</view><view class="form-row__value">{{confirmResult.confirmedAt}}</view></view>
+    <view class="form-row"><view class="form-row__label">学时归属</view><view class="form-row__value">实际授课人 {{confirmResult.teacherName}}</view></view>
+  </view>
+  <view class="tipbar tipbar--error" wx:if="{{verifyState === 'done' && confirmResult && confirmResult.nameMismatch}}">
+    确认人「{{confirmResult.confirmedName}}」与录入的实际授课人「{{confirmResult.teacherName}}」不同名，已标记待提醒；学时仍按实际授课人计入。
+  </view>
+  <view class="btn-ghost" wx:if="{{verifyState === 'done'}}" bindtap="rescan">返回首页</view>
+
+  <view class="foot-note">确认即完成：不填表、不手写签名。动态码 60 秒有效且只能使用一次；过期请让班干部刷新。本系统不采集定位。</view>
+</block>

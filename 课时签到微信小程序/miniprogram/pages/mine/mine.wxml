@@ -1,0 +1,70 @@
+<view class="sec-title">当前身份</view>
+<view class="card">
+  <view class="cell">
+    <view class="cell__main">
+      <view class="cell__title">{{roleText}}</view>
+      <view class="cell__desc" wx:if="{{needBind}}">尚未绑定工号/学号，请点下方「去绑定」</view>
+      <view class="cell__desc" wx:else>身份由后端白名单绑定确定，不能在前端切换</view>
+    </view>
+  </view>
+  <view class="form-row" wx:for="{{items}}" wx:key="k">
+    <view class="form-row__label">{{item.k}}</view>
+    <view class="form-row__value">{{item.v}}</view>
+  </view>
+</view>
+
+<view class="sec-title">课时功能</view>
+<view class="card">
+  <view class="cell" bindtap="goCourses">
+    <view class="cell__main">
+      <view class="cell__title">我的课程</view>
+      <view class="cell__desc">{{canManageCourses ? '录入一次、长期保留：课程名 / 授课老师 / 星期 / 节次 / 地点 / 学时' : '本班课程清单（只读）'}}</view>
+    </view>
+    <view class="arrow">›</view>
+  </view>
+</view>
+
+<view class="sec-title">账号操作</view>
+<view class="card">
+  <view class="cell" wx:if="{{needBind}}" bindtap="goBind">
+    <view class="cell__main"><view class="cell__title">去绑定工号/学号</view>
+      <view class="cell__desc">绑定后才能出示动态码 / 发起课时确认</view></view>
+    <view class="arrow">›</view>
+  </view>
+  <view class="cell" wx:else bindtap="rebind">
+    <view class="cell__main"><view class="cell__title">重新绑定</view>
+      <view class="cell__desc">重新发起微信登录并绑定工号/学号；已绑定别的微信时可在绑定页自助解绑</view></view>
+    <view class="arrow">›</view>
+  </view>
+  <view class="cell" wx:if="{{!needBind}}" bindtap="unbindTap">
+    <view class="cell__main"><view class="cell__title">解绑当前微信</view>
+      <view class="cell__desc">换微信/换手机时用：仅解除微信与工号/学号的绑定，用户档案与历史课时数据不受影响</view></view>
+    <view class="arrow">›</view>
+  </view>
+  <view class="cell" wx:if="{{!needBind}}" bindtap="logout">
+    <view class="cell__main"><view class="cell__title">退出登录</view>
+      <view class="cell__desc">清除本机 token 与身份，回到绑定引导</view></view>
+    <view class="arrow">›</view>
+  </view>
+  <view class="cell" bindtap="clearData">
+    <view class="cell__main"><view class="cell__title">清除本地演示数据</view>
+      <view class="cell__desc">仅清本机 mock 缓存，不影响后端数据</view></view>
+    <view class="arrow">›</view>
+  </view>
+</view>
+
+<view class="sec-title">关于</view>
+<view class="card">
+  <view class="form-row">
+    <view class="form-row__label">版本</view>
+    <view class="form-row__value">0.3.0</view>
+  </view>
+  <view class="form-row">
+    <view class="form-row__label">数据来源</view>
+    <view class="form-row__value">{{dataSource}}</view>
+  </view>
+  <view class="form-row">
+    <view class="form-row__label">定位采集</view>
+    <view class="form-row__value">不采集（决策 15）</view>
+  </view>
+</view>

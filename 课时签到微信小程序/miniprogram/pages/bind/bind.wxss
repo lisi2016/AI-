@@ -1,0 +1,60 @@
+/* 绑定页：仅补充全局样式里没有的少量排版 */
+
+.bind-err {
+  font-size: 26rpx;
+  line-height: 1.7;
+}
+
+.bind-advice {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: #6B4A44;
+}
+
+.retry-link {
+  display: inline-block;
+  margin-top: 14rpx;
+  font-size: 26rpx;
+  color: #2B4E9B;
+  text-decoration: underline;
+}
+
+/* 自助解绑（换绑）：错误提示区里的次要主按钮 */
+.self-unbind {
+  margin-top: 18rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx solid rgba(107, 74, 68, 0.18);
+}
+
+.btn-self-unbind {
+  margin-top: 14rpx;
+  padding: 18rpx 0;
+  text-align: center;
+  font-size: 28rpx;
+  color: #FFFFFF;
+  background: #C0392B;
+  border-radius: 12rpx;
+}
+
+.btn-self-unbind:active {
+  opacity: 0.86;
+}
+
+.bind-rule {
+  width: 100%;
+  font-size: 24rpx;
+  line-height: 1.8;
+  color: #5B6066;
+}
+
+.form-row--stack {
+  display: block;
+}
+
+.foot-note {
+  padding: 24rpx 32rpx 40rpx;
+  font-size: 22rpx;
+  color: #B8BEC5;
+  word-break: break-all;
+}

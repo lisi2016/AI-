@@ -1,0 +1,259 @@
+<!-- 首页：按身份渲染（业务流程简化：班干部出示二维码 · 教师扫码确认） -->
+
+<!-- 未登录 / 未绑定 / 登录失效：给出「去绑定」引导，不静默失败、不留空白 -->
+<block wx:if="{{ready && needBind}}">
+  <view class="state-box">
+    <view class="state-box__icon">🔒</view>
+    <view class="state-box__title">尚未绑定工号/学号</view>
+    <view class="state-box__desc">{{bindHint || '绑定后系统才能识别你的身份：班干部出示课时二维码，任课教师扫码确认。'}}</view>
+  </view>
+  <view class="btn-primary" bindtap="goBind">去绑定</view>
+  <view class="foot-note">首次使用需用工号/学号绑定微信，由教务处白名单校验身份。本系统不采集定位。</view>
+</block>
+
+<!-- ============================ 班干部：今日课程 → 出示二维码 ============================ -->
+<block wx:if="{{!needBind && role === 'cadre'}}">
+  <view class="hero">
+    <view class="hero__name">{{user.name}}</view>
+    <view class="hero__sub">{{user.className}} · {{user.duty || '班干部'}}</view>
+  </view>
+
+  <view class="sec-title">今日课程 · {{todayText}}<block wx:if="{{todayWeekdayText}}">（{{todayWeekdayText}}）</block></view>
+
+  <view class="tipbar tipbar--error" wx:if="{{loadError}}">{{loadError}}</view>
+
+  <view class="card">
+    <view class="state-box" wx:if="{{courseEmpty && !loading}}">
+      <view class="state-box__icon">📚</view>
+      <view class="state-box__title">今天没有课</view>
+      <view class="state-box__desc">课程清单由班干部录入一次、长期保留；录入后每次上课直接出示二维码</view>
+    </view>
+    <view class="btn-ghost" wx:if="{{courseEmpty && !loading}}" bindtap="goCourses">去我的课程添加</view>
+
+    <view class="course" wx:for="{{courses}}" wx:key="id">
+      <view class="course__head">
+        <view class="course__name">{{item.courseName}}</view>
+        <view class="tag tag--{{item.status}}">{{item.statusText}}</view>
+      </view>
+      <view class="course__line">{{item.teacherName}} · {{item.section}} 节<block wx:if="{{item.startTime}}"> {{item.time}}</block> · {{item.hours}} 学时</view>
+      <view class="course__line" wx:if="{{item.place}}">地点：{{item.place}}</view>
+      <view class="course__ops">
+        <view class="op op--primary" data-id="{{item.id}}" bindtap="presentCode">出示二维码</view>
+        <view class="op" data-id="{{item.id}}" bindtap="openAdjust">临时调整</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="btn-ghost" wx:if="{{!courseEmpty}}" bindtap="goCourses">管理我的课程清单</view>
+
+  <!-- 临时调整：只影响本次课；可勾选同时写回课程清单（无需审批） -->
+  <block wx:if="{{adj.show}}">
+    <view class="sec-title">临时调整本次课 · {{adj.courseName}}</view>
+    <view class="tipbar tipbar--info">
+      换老师 / 改节次 / 改地点都只作用于本次课时，不需要审批；后端会自动标记「临时调整」。
+    </view>
+    <view class="tipbar tipbar--error" wx:if="{{adj.error}}">{{adj.error}}</view>
+    <view class="card">
+      <view class="form-row">
+        <view class="form-row__label">实际授课人</view>
+        <input class="form-row__value" maxlength="30" placeholder="默认按课程清单" placeholder-class="form-row__placeholder"
+               value="{{adj.teacherName}}" bindinput="onAdjTeacher" />
+      </view>
+      <view class="form-row">
+        <view class="form-row__label">节次</view>
+        <input class="form-row__value" maxlength="20" placeholder="如 1-2" placeholder-class="form-row__placeholder"
+               value="{{adj.section}}" bindinput="onAdjSection" />
+      </view>
+      <view class="form-row">
+        <view class="form-row__label">地点</view>
+        <input class="form-row__value" maxlength="60" placeholder="如 实训楼A302" placeholder-class="form-row__placeholder"
+               value="{{adj.place}}" bindinput="onAdjPlace" />
+      </view>
+      <view class="form-row">
+        <view class="form-row__label">学时</view>
+        <input class="form-row__value" type="digit" maxlength="3" placeholder="默认按课程清单" placeholder-class="form-row__placeholder"
+               value="{{adj.hours}}" bindinput="onAdjHours" />
+      </view>
+      <view class="form-row">
+        <view class="form-row__label">缺勤人数</view>
+        <input class="form-row__value" type="number" maxlength="3" placeholder="选填，0 表示全勤" placeholder-class="form-row__placeholder"
+               value="{{adj.absentCount}}" bindinput="onAdjAbsentCount" />
+      </view>
+      <view class="form-row form-row--stack">
+        <view class="form-row__label">授课摘要</view>
+        <textarea class="textarea" maxlength="200" placeholder="选填，如：第 3 章 数据库基础" placeholder-class="form-row__placeholder"
+                  value="{{adj.summary}}" bindinput="onAdjSummary" />
+      </view>
+      <view class="form-row" bindtap="toggleSaveToCourse">
+        <view class="form-row__label">同时保存</view>
+        <view class="form-row__value">
+          <checkbox checked="{{adj.saveToCourse}}" color="#07C160" /> 保存到课程清单
+        </view>
+      </view>
+    </view>
+    <view class="btn-primary" bindtap="submitAdjust">发起并出示二维码</view>
+    <view class="btn-ghost" bindtap="closeAdjust">取消</view>
+  </block>
+
+  <!-- 出示面板：动态码 A 二维码 + B 6 位口令 + 倒计时 -->
+  <block wx:if="{{panel.show}}">
+    <view class="codebox">
+      <view class="codebox__name">{{panel.courseName}}</view>
+      <view class="codebox__role">
+        实际授课人 {{panel.teacherName}} · {{panel.className}}
+      </view>
+      <view class="codebox__role">
+        {{panel.section}} 节<block wx:if="{{panel.time}}"> {{panel.time}}</block><block wx:if="{{panel.place}}"> · {{panel.place}}</block> · {{panel.hours}} 学时
+      </view>
+      <view class="codebox__role">
+        发起人 {{panel.initiatorDuty}} {{panel.initiatorName}} · {{panel.statusText}}
+        <text wx:if="{{panel.isTempAdjusted}}" class="badge-temp">临时调整</text>
+      </view>
+
+      <!-- A 通道：canvas 真二维码，内容 = 后端返回的 qrPayload（kcsq://code/<codeId>） -->
+      <view class="qr-wrap {{codeExpired || codeError ? 'is-dead' : ''}}">
+        <canvas canvas-id="qrcode" id="qrcode" class="qr-canvas"
+          style="width:{{qrSize}}px;height:{{qrSize}}px"></canvas>
+        <view class="qr-mask" wx:if="{{codeExpired && !codeError}}">
+          <view class="qr-mask__text">已失效</view>
+          <view class="qr-mask__sub">请点下方按钮刷新</view>
+        </view>
+        <view class="qr-mask" wx:if="{{codeError}}">
+          <view class="qr-mask__text">获取失败</view>
+          <view class="qr-mask__sub">{{codeError}}</view>
+        </view>
+        <view class="qr-loading" wx:if="{{codeLoading}}">正在生成动态码…</view>
+      </view>
+
+      <!-- B 通道：6 位数字口令（大字号，教师可手输） -->
+      <view class="passcode-label">老师也可手输下面 6 位数字口令</view>
+      <view class="passcode {{codeExpired || codeError ? 'is-dead' : ''}}" bindtap="copyCode">
+        <text class="passcode__value">{{codeDisplay || '— — — — — —'}}</text>
+      </view>
+      <view class="passcode-hint" bindtap="copyCode">点击口令可复制</view>
+      <view class="code-id" wx:if="{{codeId}}">课时 {{panel.sessionId}} · 动态码 {{codeId}}<block wx:if="{{qrVersion}}"> · 二维码版本 {{qrVersion}}</block></view>
+
+      <view class="codebox__count" wx:if="{{!codeExpired && !codeError}}">
+        <text class="codebox__num">{{seconds}}</text> 秒后自动失效
+      </view>
+      <view class="codebox__count codebox__count--dead" wx:elif="{{codeError}}">动态码获取失败</view>
+      <view class="codebox__count codebox__count--dead" wx:else>动态码已失效</view>
+    </view>
+
+    <view class="tipbar {{codeExpired || codeError ? 'tipbar--error' : ''}}">
+      <block wx:if="{{!codeExpired && !codeError}}">请任课老师用「扫码确认」扫此二维码，或手输上方 6 位口令；老师看到本次课时信息后点一下「确认本次课时」即完成。动态码 60 秒有效、只能使用一次。</block>
+      <block wx:elif="{{codeError}}">{{codeError}}</block>
+      <block wx:else>该动态码已超过 60 秒有效期，请刷新后重新出示给老师。</block>
+    </view>
+    <view class="btn-primary" wx:if="{{codeExpired || codeError}}" bindtap="refreshCodeTap">刷新二维码</view>
+    <view class="btn-ghost" wx:else bindtap="refreshCodeTap">手动刷新</view>
+    <view class="btn-ghost" bindtap="closePanel">收起</view>
+  </block>
+
+  <view class="sec-title">最近课时</view>
+  <view class="card">
+    <view class="state-box" wx:if="{{!recentSessions.length}}">
+      <view class="state-box__title">还没有课时</view>
+      <view class="state-box__desc">点上方「出示二维码」发起本次课时</view>
+    </view>
+    <view class="cell" wx:for="{{recentSessions}}" wx:key="id" data-id="{{item.id}}" bindtap="openSession">
+      <view class="cell__main">
+        <view class="cell__title">{{item.courseName}} · {{item.className}}</view>
+        <view class="cell__desc">{{item.date}} {{item.section}} · 实际授课人 {{item.teacherName}} · {{item.hours}}学时<block wx:if="{{item.isTempAdjusted}}"> · 临时调整</block></view>
+      </view>
+      <view class="tag tag--{{item.status}}">{{item.statusText}}</view>
+    </view>
+  </view>
+  <view class="foot-note">课时状态：待教师确认 → 教师扫码点确认后变成「已确认」；当天 24 点前未确认自动置为已过期。学时按实际授课人统计。本系统不采集定位。</view>
+</block>
+
+<!-- ============================ 教师：扫码确认（不填表、不手写签名） ============================ -->
+<block wx:if="{{!needBind && role === 'teacher'}}">
+  <view class="hero">
+    <view class="hero__name">{{user.name}}</view>
+    <view class="hero__sub">工号 {{user.no || user.staffId}} · {{user.dept}} · 任课教师</view>
+  </view>
+  <view class="stat3">
+    <view class="stat3__item"><view class="stat3__num">{{todayCount}}</view><view class="stat3__label">今日课程</view></view>
+    <view class="stat3__item"><view class="stat3__num">{{doneCount}}</view><view class="stat3__label">已确认</view></view>
+    <view class="stat3__item"><view class="stat3__num">{{waitCount}}</view><view class="stat3__label">待我确认</view></view>
+  </view>
+
+  <!-- A 扫码（主）+ B 输入 6 位口令（兜底） -->
+  <view class="btn-primary" bindtap="startScan">扫码确认本次课时</view>
+  <view class="btn-ghost" bindtap="inputPassCode">输入 6 位口令</view>
+  <view class="foot-note">扫班干部出示的课时二维码后，核对本次课时信息并点「确认本次课时」即可，无需填表与手写签名。扫不到时可让班干部报出 6 位数字口令手输。本系统不采集定位。</view>
+
+  <view class="tipbar tipbar--error" wx:if="{{loadError}}">{{loadError}}</view>
+
+  <view class="sec-title">待我确认的课时</view>
+  <view class="card">
+    <view class="state-box" wx:if="{{!waitSessions.length}}">
+      <view class="state-box__title">暂无待确认课时</view>
+      <view class="state-box__desc">班干部出示二维码后出现在这里</view>
+    </view>
+    <view class="cell" wx:for="{{waitSessions}}" wx:key="id" data-id="{{item.id}}" bindtap="openSession">
+      <view class="cell__main">
+        <view class="cell__title">{{item.courseName}} · {{item.className}}</view>
+        <view class="cell__desc">{{item.date}} {{item.section}} · 实际授课人 {{item.teacherName}} · {{item.hours}}学时<block wx:if="{{item.isTempAdjusted}}"> · 临时调整</block></view>
+      </view>
+      <view class="tag tag--{{item.status}}">{{item.statusText}}</view>
+    </view>
+  </view>
+  <view class="tipbar tipbar--info">确认动作在扫码后的「课时确认页」完成：看到课程名 / 实际授课人 / 班级 / 日期 / 节次 / 地点 / 发起人，点一下「确认本次课时」。</view>
+
+  <view class="sec-title">今日授课 · {{todayText}}</view>
+  <view class="card">
+    <view class="state-box" wx:if="{{!tasks.length && !loading}}">
+      <view class="state-box__title">今日没有排课</view>
+      <view class="state-box__desc">课表由教务处导入；若应有课请联系教务处</view>
+    </view>
+    <view class="cell" wx:for="{{tasks}}" wx:key="id" data-id="{{item.id}}" data-record-id="{{item.recordId}}" bindtap="openRecord">
+      <view class="cell__main">
+        <view class="cell__title">{{item.time}}　{{item.section}}　{{item.courseName}}</view>
+        <view class="cell__desc">{{item.className}} · {{item.place}} · {{item.hours}}学时</view>
+      </view>
+      <view class="tag tag--{{item.status}}">{{item.status === 'done' ? '已确认' : (item.status === 'wait' ? '待确认' : '未发起')}}</view>
+    </view>
+  </view>
+
+  <view class="sec-title">本周学时</view>
+  <view class="card">
+    <view class="cell" bindtap="goRecords">
+      <view class="cell__main">
+        <view class="cell__title">本周已确认学时</view>
+        <view class="cell__desc">{{weekRangeText || '本周'}} · 按实际授课人统计（含临时调整与代课）</view>
+      </view>
+      <view class="big-num">{{weekHours}}</view>
+      <view class="arrow">›</view>
+    </view>
+  </view>
+</block>
+
+<!-- ============================ 院系管理员 / 教务处：只读看板 ============================ -->
+<block wx:if="{{!needBind && (role === 'admin' || role === 'dept_admin')}}">
+  <view class="hero">
+    <view class="hero__name">{{user.name}}</view>
+    <view class="hero__sub">{{user.dept}} · {{role === 'admin' ? '教务处' : '院系管理员'}}</view>
+  </view>
+  <view class="stat3">
+    <view class="stat3__item"><view class="stat3__num">{{weekTotal}}</view><view class="stat3__label">已确认学时</view></view>
+    <view class="stat3__item"><view class="stat3__num">{{waitTotal}}</view><view class="stat3__label">待教师确认</view></view>
+    <view class="stat3__item"><view class="stat3__num">{{abnormalCount}}</view><view class="stat3__label">异常课时</view></view>
+  </view>
+  <view class="tipbar tipbar--info">统计口径：仅「已确认 / 已补签」计入正式学时，按实际授课人归属。导入、导出与审核请在 Web 后台操作。</view>
+  <view class="sec-title">院系学时（已确认）</view>
+  <view class="card">
+    <view class="state-box" wx:if="{{!deptStats.length}}">
+      <view class="state-box__title">暂无分系数据</view>
+      <view class="state-box__desc">数据由后端统计接口返回</view>
+    </view>
+    <view class="bar" wx:for="{{deptStats}}" wx:key="name">
+      <view class="bar__name">{{item.name}}</view>
+      <view class="bar__track"><view class="bar__fill" style="width:{{item.percent}}%"></view></view>
+      <view class="bar__value">{{item.hours}}</view>
+    </view>
+  </view>
+  <view class="btn-ghost" bindtap="goRecords">查看课时记录</view>
+  <view class="btn-ghost" bindtap="goWebAdmin">去 Web 后台处理审核 / 导入 / 导出</view>
+</block>

@@ -1,0 +1,64 @@
+<!-- 绑定工号/学号：姓名 + 工号/学号 + 身份（教师 / 班干部） -->
+<view class="tipbar tipbar--info">
+  首次使用需把微信与工号/学号绑定。绑定后由后端白名单校验身份，本系统不采集定位信息。
+</view>
+
+<!-- 连通性预检：把"手机连不上后端"提前暴露，避免一直停在"绑定中…" -->
+<view class="tipbar tipbar--info" wx:if="{{conn === 'checking'}}">正在连接服务器 {{apiBase}} …</view>
+<view class="tipbar tipbar--error" wx:if="{{conn === 'fail'}}">
+  <view class="bind-err">无法连接服务器</view>
+  <view class="bind-advice">{{connMsg}}</view>
+  <view class="bind-advice">真机预览时请从右上角「…」菜单开启「开发调试」后重新进入；正式使用需配置已备案的 HTTPS 域名。</view>
+  <view class="retry-link" bindtap="checkConn">重新检测连接</view>
+</view>
+
+<view class="tipbar tipbar--error" wx:if="{{errorMsg}}">
+  <view class="bind-err">{{errorMsg}}</view>
+  <view class="bind-advice" wx:if="{{advice}}">{{advice}}</view>
+  <!-- 后端提示「已被其他微信绑定」时的自助解绑入口（换微信免去找教务处） -->
+  <view class="self-unbind" wx:if="{{canSelfUnbind}}">
+    <view class="bind-advice">确认「姓名 + 工号/学号」填写无误后，可自助解绑原微信并立即重新绑定（只解除微信绑定，历史课时数据不受影响）：</view>
+    <view class="btn-self-unbind" bindtap="selfUnbind">{{selfUnbindBusy ? '解绑中…' : '自助解绑并重新绑定'}}</view>
+    <view class="bind-advice">同一工号 24 小时内最多自助解绑 2 次；次数用尽请稍后再试或联系教务处。</view>
+  </view>
+  <view class="retry-link" bindtap="retryLogin">重新尝试绑定</view>
+</view>
+
+<view class="tipbar" wx:if="{{mode === 'rebind' && currentText}}">
+  当前微信已绑定：{{currentText}}。重新绑定会覆盖本地登录态；同一工号/学号在服务端只能绑定一个微信。
+</view>
+
+<view class="sec-title">身份信息</view>
+<view class="card">
+  <view class="form-row">
+    <view class="form-row__label">真实姓名</view>
+    <input class="form-row__value" placeholder="与教务处登记一致" placeholder-class="form-row__placeholder"
+           value="{{realName}}" bindinput="onName" maxlength="20" />
+  </view>
+  <view class="form-row">
+    <view class="form-row__label">工号/学号</view>
+    <input class="form-row__value" placeholder="教师填工号，班干部填学号" placeholder-class="form-row__placeholder"
+           value="{{no}}" bindinput="onNo" maxlength="32" />
+  </view>
+  <view class="form-row">
+    <view class="form-row__label">身份</view>
+    <picker class="form-row__value" mode="selector" range="{{roleRange}}" value="{{roleIndex}}" bindchange="pickRole">
+      <view>{{roleRange[roleIndex]}}</view>
+    </picker>
+  </view>
+</view>
+
+<view class="btn-primary" bindtap="submit">{{submitting ? '绑定中…' : (mode === 'rebind' ? '重新绑定' : '绑定并登录')}}</view>
+<view class="btn-ghost" wx:if="{{currentText}}" bindtap="goHome">返回首页（保持当前身份）</view>
+
+<view class="sec-title">绑定规则</view>
+<view class="card">
+  <view class="form-row form-row--stack">
+    <view class="bind-rule">1. 姓名与工号/学号必须与教务处白名单完全一致，否则后端拒绝绑定。</view>
+    <view class="bind-rule">2. 一个工号/学号只能绑定一个微信。换微信时：旧微信还能登录 → 到「我的」页点「解绑当前微信」；已登不进去 → 在本页绑定失败后用「自助解绑并重新绑定」（只解除绑定，历史课时数据不受影响）。</view>
+    <view class="bind-rule">3. 班干部需由教务处录入教学班与班干部授权后，才能出示动态码。</view>
+    <view class="bind-rule">4. 院系管理员 / 教务处请使用 Web 后台账号密码登录，不走小程序绑定。</view>
+  </view>
+</view>
+
+<view class="foot-note">当前后端：{{apiBase || '（未配置，走本地演示数据）'}}</view>

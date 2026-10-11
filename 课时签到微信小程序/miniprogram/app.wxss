@@ -1,0 +1,343 @@
+/* 全局样式 - WeUI 设计规范 token + 原生组件实现
+   设计系统见 docs/miniapp/design-system.md */
+
+page {
+  --brand: #07C160;
+  --brand-press: #06AD56;
+  --ink-1: #1A1A1A;
+  --ink-2: #5B6066;
+  --ink-3: #8A9099;
+  --line: #E6E8EB;
+  --bg-page: #F2F3F5;
+  --bg-card: #FFFFFF;
+
+  background-color: #F2F3F5;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Helvetica, sans-serif;
+  font-size: 30rpx;
+  color: #1A1A1A;
+  line-height: 1.6;
+}
+
+/* 区块标题 */
+.sec-title {
+  padding: 16rpx 32rpx 12rpx;
+  font-size: 26rpx;
+  color: #8A9099;
+}
+
+/* 卡片列表 */
+.card {
+  background: #FFFFFF;
+  border-top: 1rpx solid #E6E8EB;
+  border-bottom: 1rpx solid #E6E8EB;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 26rpx 32rpx;
+  border-bottom: 1rpx solid #E6E8EB;
+}
+
+.cell:last-child {
+  border-bottom: none;
+}
+
+.cell__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.cell__title {
+  font-size: 30rpx;
+  font-weight: 500;
+}
+
+.cell__desc {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #8A9099;
+}
+
+/* 状态标签 */
+.tag {
+  flex: none;
+  font-size: 22rpx;
+  padding: 4rpx 14rpx;
+  border-radius: 6rpx;
+}
+
+.tag--done { background: #E8F8EE; color: #07A050; }
+.tag--wait { background: #FFF4E5; color: #C97A16; }
+.tag--expired { background: #F2F3F5; color: #8A9099; }
+.tag--rejected { background: #FDECEC; color: #D54941; }
+.tag--makeup { background: #E9F0FE; color: #2B5BB5; }
+.tag--draft { background: #F2F3F5; color: #5B6066; }
+
+/* 按钮 */
+.btn-primary {
+  margin: 24rpx 32rpx;
+  height: 92rpx;
+  line-height: 92rpx;
+  border-radius: 8rpx;
+  background: #07C160;
+  color: #FFFFFF;
+  font-size: 32rpx;
+  text-align: center;
+}
+
+.btn-primary.button-hover {
+  background: #06AD56;
+}
+
+.btn-ghost {
+  margin: 24rpx 32rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  border: 1rpx solid #D9DCE1;
+  border-radius: 8rpx;
+  background: #FFFFFF;
+  color: #3A3F45;
+  font-size: 30rpx;
+  text-align: center;
+}
+
+.btn-ghost.button-hover {
+  background: #F7F8FA;
+}
+
+/* 表单行 */
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding: 26rpx 32rpx;
+  background: #FFFFFF;
+  border-bottom: 1rpx solid #E6E8EB;
+}
+
+.form-row__label {
+  flex: none;
+  width: 176rpx;
+  font-size: 28rpx;
+  color: #5B6066;
+}
+
+.form-row__value {
+  flex: 1;
+  text-align: right;
+  font-size: 28rpx;
+}
+
+.form-row__placeholder {
+  color: #B8BEC5;
+}
+
+/* 三列统计 */
+.stat3 {
+  display: flex;
+  background: #FFFFFF;
+  border-bottom: 1rpx solid #E6E8EB;
+}
+
+.stat3__item {
+  flex: 1;
+  text-align: center;
+  padding: 24rpx 0;
+}
+
+.stat3__num {
+  font-size: 40rpx;
+  font-weight: 600;
+}
+
+.stat3__label {
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: #8A9099;
+}
+
+/* 提示条 */
+.tipbar {
+  padding: 22rpx 32rpx;
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: #8A6A1F;
+  background: #FFF9E8;
+}
+
+.tipbar--info {
+  color: #2B4E9B;
+  background: #EEF3FF;
+}
+
+.tipbar--error {
+  color: #8A3A34;
+  background: #FDECEC;
+}
+
+/* 空状态与错误 */
+.state-box {
+  padding: 140rpx 80rpx;
+  text-align: center;
+  color: #8A9099;
+}
+
+.state-box__icon {
+  font-size: 80rpx;
+  opacity: 0.25;
+  margin-bottom: 24rpx;
+}
+
+.state-box__title {
+  font-size: 28rpx;
+}
+
+.state-box__desc {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+}
+
+/* 骨架屏 */
+.skeleton {
+  padding: 32rpx;
+}
+
+.skeleton__bar {
+  height: 28rpx;
+  background: #E9EBEE;
+  border-radius: 6rpx;
+  margin-bottom: 20rpx;
+}
+
+/* 标签页（记录页 / 我的课程共用） */
+.seg {
+  display: flex;
+  background: #FFFFFF;
+  border-bottom: 1rpx solid #E6E8EB;
+}
+
+.seg__item {
+  flex: 1;
+  text-align: center;
+  padding: 22rpx 0;
+  font-size: 28rpx;
+  color: #5B6066;
+}
+
+.seg__item.is-on {
+  color: #07C160;
+  border-bottom: 4rpx solid #07C160;
+  font-weight: 500;
+}
+
+/* 各状态数量角标：取自 summary.statusTotals（不受 status= 筛选影响） */
+.seg__badge {
+  display: inline-block;
+  min-width: 28rpx;
+  margin-left: 6rpx;
+  padding: 0 8rpx;
+  height: 30rpx;
+  line-height: 30rpx;
+  border-radius: 15rpx;
+  background: #EDEFF2;
+  color: #7A8087;
+  font-size: 20rpx;
+  vertical-align: 2rpx;
+}
+
+.seg__item.is-on .seg__badge {
+  background: #E6F7EE;
+  color: #07C160;
+}
+
+/* 分页底部提示 */
+.list-foot {
+  padding: 24rpx 32rpx 40rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: #B8BEC5;
+}
+
+/* 卡片内小按钮（编辑 / 归档 / 出示二维码等） */
+.op {
+  padding: 10rpx 26rpx;
+  border: 1rpx solid #D9DCE1;
+  border-radius: 8rpx;
+  font-size: 26rpx;
+  color: #3A3F45;
+  background: #FFFFFF;
+}
+
+.op--primary {
+  color: #FFFFFF;
+  background: #07C160;
+  border-color: #07C160;
+}
+
+.op--danger { color: #D54941; border-color: #F3C9C6; }
+
+.op--muted { color: #B8BEC5; border-color: #EDEFF2; }
+
+.req { color: #D54941; margin-left: 4rpx; }
+
+/* 详情 / 核对页头部（课时确认页、课时详情页共用） */
+.head {
+  padding: 32rpx;
+  background: #FFFFFF;
+  border-bottom: 1rpx solid #E6E8EB;
+}
+
+.head__course {
+  font-size: 36rpx;
+  font-weight: 600;
+}
+
+.head__sub {
+  margin-top: 8rpx;
+  font-size: 26rpx;
+  color: #8A9099;
+}
+
+.head__tag {
+  display: inline-block;
+  margin-top: 16rpx;
+}
+
+/* 表单：堆叠行（多行文本） */
+.form-row--stack { display: block; }
+
+.form-row--stack .form-row__label {
+  width: auto;
+  margin-bottom: 12rpx;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 120rpx;
+  font-size: 28rpx;
+  line-height: 1.6;
+}
+
+/* 页脚说明 */
+.foot-note {
+  padding: 0 32rpx 48rpx;
+  font-size: 22rpx;
+  color: #8A9099;
+  line-height: 1.7;
+}
+
+/* 「临时调整」标记（课时会话） */
+.badge-temp {
+  display: inline-block;
+  margin-left: 12rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 6rpx;
+  background: #FFF4E5;
+  color: #C97A16;
+  font-size: 20rpx;
+  vertical-align: 2rpx;
+}
+
+

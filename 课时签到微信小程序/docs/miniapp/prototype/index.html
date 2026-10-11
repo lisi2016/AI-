@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>高保真原型 · 课堂课时确认与学时统计小程序</title>
+<style>
+  :root{
+    --brand:#07C160; --brand-press:#06AD56; --brand-disabled:#9CE3BC;
+    --ink1:#1A1A1A; --ink2:#5B6066; --ink3:#8A9099;
+    --line:#E6E8EB; --page:#F2F3F5; --card:#FFFFFF;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;padding:20px 18px 60px;background:#EDEFF2;color:var(--ink1);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  }
+  h1{font-size:20px;margin:0 0 4px;}
+  .lead{font-size:13px;color:var(--ink2);line-height:1.7;margin:0 0 16px;max-width:980px;}
+  .lead b{color:var(--ink1);}
+
+  .console{
+    background:#fff;border:1px solid #DDE1E6;border-radius:12px;padding:14px 16px;margin-bottom:18px;
+  }
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;}
+  .row:last-child{margin-bottom:0;}
+  .row .lab{font-size:12px;color:var(--ink3);width:64px;flex:none;}
+  .chip{
+    font-size:13px;padding:6px 12px;border-radius:16px;border:1px solid #DDE1E6;background:#fff;
+    color:var(--ink2);cursor:pointer;user-select:none;
+  }
+  .chip:hover{border-color:#C3C9D0;}
+  .chip.sel{background:var(--brand);border-color:var(--brand);color:#fff;}
+  .chip.dim{opacity:.45;cursor:not-allowed;}
+  .hint{font-size:12px;color:var(--ink3);margin-top:8px;line-height:1.6;}
+
+  .stage{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;}
+  .phone{
+    width:375px;flex:none;background:#fff;border:1px solid #D3D7DC;border-radius:24px;overflow:hidden;
+    box-shadow:0 6px 20px rgba(20,25,35,.10);display:flex;flex-direction:column;
+  }
+  .statusbar{
+    height:34px;flex:none;display:flex;align-items:center;justify-content:space-between;
+    padding:0 16px;font-size:12px;font-weight:600;background:#fff;
+  }
+  .statusbar .r{font-size:11px;letter-spacing:-.5px;}
+  .navbar{
+    height:44px;flex:none;position:relative;display:flex;align-items:center;justify-content:center;
+    background:#fff;border-bottom:1px solid var(--line);
+  }
+  .nav-back{position:absolute;left:12px;font-size:15px;color:#111;}
+  .nav-title{font-size:16px;font-weight:600;}
+  .capsule{
+    position:absolute;right:10px;top:8px;height:28px;width:88px;border-radius:14px;
+    border:1px solid #E2E4E8;background:#F7F7F7;display:flex;align-items:center;justify-content:space-around;
+    font-size:13px;color:#3A3F45;
+  }
+  .capsule .circle{width:14px;height:14px;border:1.5px solid #6B7178;border-radius:50%;position:relative;}
+  .capsule .circle::after{content:"";position:absolute;inset:3px;background:#6B7178;border-radius:50%;}
+  .screen{flex:1;min-height:560px;background:var(--page);overflow-y:auto;position:relative;}
+  .tabbar{flex:none;display:flex;background:#fff;border-top:1px solid var(--line);padding:6px 0 4px;}
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center;cursor:pointer;}
+  .tab svg{width:24px;height:24px;}
+  .tab span{font-size:11px;}
+  .tab.on{color:var(--brand);}
+  .tab.off{color:#9AA0A6;}
+  .safe{
+    height:18px;flex:none;background:#fff;position:relative;border-top:1px dashed #E6E8EB;
+  }
+  .safe::after{
+    content:"安全区";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:9px;color:#C2C7CD;
+  }
+
+  /* ---------- 通用组件 ---------- */
+  .sec{font-size:13px;color:var(--ink3);padding:8px 16px 6px;}
+  .card{background:#fff;border-bottom:1px solid var(--line);}
+  .line{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center;}
+  .line:last-child{border-bottom:none;}
+  .line .m{flex:1;min-width:0;}
+  .t1{font-size:15px;font-weight:500;}
+  .t2{font-size:12px;color:var(--ink3);margin-top:4px;line-height:1.5;}
+  .tag{font-size:11px;padding:2px 7px;border-radius:3px;flex:none;}
+  .tag.done{background:#E8F8EE;color:#07A050;}
+  .tag.wait{background:#FFF4E5;color:#C97A16;}
+  .tag.exp{background:#F2F3F5;color:#8A9099;}
+  .tag.rej{background:#FDECEC;color:#D54941;}
+  .tag.mk{background:#E9F0FE;color:#2B5BB5;}
+  .btn{
+    margin:12px 16px;height:46px;border-radius:4px;background:var(--brand);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;
+  }
+  .btn:active{background:var(--brand-press);}
+  .btn.ghost{background:#fff;border:1px solid #D9DCE1;color:#3A3F45;}
+  .btn.wide{margin:12px 16px;}
+  .hero{background:#fff;padding:14px 16px;border-bottom:1px solid var(--line);}
+  .hero .who{font-size:15px;font-weight:600;}
+  .hero .sub{font-size:12px;color:var(--ink3);margin-top:3px;}
+  .stat3{display:flex;background:#fff;border-bottom:1px solid var(--line);}
+  .stat3 div{flex:1;text-align:center;padding:12px 0;}
+  .stat3 div+div{border-left:1px solid var(--line);}
+  .stat3 .n{font-size:20px;font-weight:600;}
+  .stat3 .l{font-size:11px;color:var(--ink3);margin-top:2px;}
+  .form-row{background:#fff;padding:13px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;}
+  .form-row .k{font-size:14px;color:var(--ink2);width:88px;flex:none;}
+  .form-row .v{flex:1;font-size:14px;text-align:right;}
+  .form-row .v.ph{color:#B8BEC5;}
+  .form-row .v input,.form-row .v textarea{
+    width:100%;border:none;text-align:right;font-size:14px;font-family:inherit;color:var(--ink1);outline:none;resize:none;
+  }
+  .radios{display:flex;gap:14px;justify-content:flex-end;}
+  .radios label{font-size:14px;color:var(--ink2);display:flex;align-items:center;gap:4px;cursor:pointer;}
+  .radios input{accent-color:var(--brand);}
+  .empty{padding:70px 40px;text-align:center;color:var(--ink3);}
+  .empty .ic{font-size:40px;opacity:.25;margin-bottom:12px;}
+  .empty .tx{font-size:14px;}
+  .empty .sub{font-size:12px;margin-top:6px;}
+  .err{padding:70px 40px;text-align:center;color:var(--ink3);}
+  .err .tx{font-size:14px;color:var(--ink2);}
+  .skel{padding:16px;}
+  .skel .b{height:14px;background:#E9EBEE;border-radius:3px;margin-bottom:10px;}
+  .skel .b.w60{width:60%;} .skel .b.w80{width:80%;} .skel .b.w40{width:40%;}
+  .mask{
+    position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;z-index:20;
+  }
+  .sheet{
+    background:#fff;width:100%;border-radius:12px 12px 0 0;padding:20px 20px 16px;
+  }
+  .sheet h3{font-size:16px;margin:0 0 10px;text-align:center;}
+  .sheet p{font-size:13px;color:var(--ink2);line-height:1.7;margin:0 0 16px;}
+  .sheet .acts{display:flex;gap:10px;}
+  .sheet .acts div{
+    flex:1;height:44px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;
+  }
+  .sheet .ok{background:var(--brand);color:#fff;}
+  .sheet .no{background:#F2F3F5;color:var(--ink2);}
+  .qrbox{background:#fff;padding:20px 16px 16px;text-align:center;border-bottom:1px solid var(--line);}
+  .qrbox .nm{font-size:15px;font-weight:600;}
+  .qrbox .rl{font-size:12px;color:var(--ink3);margin-top:3px;}
+  .qr{margin:16px auto 12px;width:200px;height:200px;display:block;}
+  .qr.dead{opacity:.25;filter:grayscale(1);}
+  .cnt{font-size:13px;color:var(--ink3);}
+  .cnt b{color:var(--brand);font-size:15px;}
+  .cnt b.dead{color:#D54941;}
+  .tipbar{background:#FFF9E8;padding:11px 16px;font-size:12px;color:#8A6A1F;line-height:1.6;}
+  .tipbar.blue{background:#EEF3FF;color:#2B4E9B;}
+  .pad{
+    width:100%;height:200px;background:#fff;display:block;touch-action:none;cursor:crosshair;
+  }
+  .evidence{background:#fff;border-bottom:1px solid var(--line);}
+  .ev{display:flex;padding:9px 16px;font-size:12px;gap:12px;}
+  .ev .k{color:var(--ink3);width:80px;flex:none;}
+  .ev .v{color:var(--ink2);flex:1;word-break:break-all;}
+  .signimg{
+    margin:12px 16px;height:110px;border:1px dashed #D9DCE1;border-radius:4px;background:#FAFBFC;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .signimg svg{width:170px;height:80px;}
+  .hidden{display:none !important;}
+  .ban{
+    margin:12px 16px;padding:11px 12px;background:#FFF4E5;border-radius:4px;font-size:12px;color:#8A5A12;line-height:1.6;
+  }
+  .big{background:#fff;padding:16px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;justify-content:space-between;}
+  .big .n{font-size:30px;font-weight:600;}
+  .big .u{font-size:13px;color:var(--ink3);margin-left:4px;}
+  .bar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#fff;border-bottom:1px solid var(--line);}
+  .bar .nm{font-size:13px;width:70px;flex:none;color:var(--ink2);}
+  .bar .tr{flex:1;height:10px;background:#F0F2F4;border-radius:5px;overflow:hidden;}
+  .bar .fl{height:10px;background:var(--brand);border-radius:5px;}
+  .bar .vv{font-size:12px;color:var(--ink2);width:52px;text-align:right;flex:none;}
+  .seg{display:flex;background:#fff;border-bottom:1px solid var(--line);}
+  .seg div{
+    flex:1;text-align:center;padding:11px 0;font-size:14px;color:var(--ink2);cursor:pointer;
+  }
+  .seg div.on{color:var(--brand);border-bottom:2px solid var(--brand);font-weight:500;}
+</style>
+</head>
+<body>
+
+<h1>高保真原型 · 课堂课时确认与学时统计</h1>
+<p class="lead">
+用下面的按钮切换<b>身份</b>和<b>页面</b>，手机框内可以点击跳转；带 <b>状态</b> 按钮的页面可切换加载中、空数据、错误、拒绝授权等状态。
+签名页的画板可以真的用鼠标或手指写。
+<b>这是 HTML 原型，不是最终小程序</b>——微信原生组件、系统字体、安全区域、权限弹窗和真机尺寸会让最终效果有所不同，最终以微信开发者工具和安卓、iPhone 真机为准。
+</p>
+
+<div class="console">
+  <div class="row"><span class="lab">身份</span>
+    <span class="chip sel" data-role="teacher">任课教师</span>
+    <span class="chip" data-role="cadre">班干部</span>
+    <span class="chip" data-role="admin">教务处</span>
+  </div>
+  <div class="row" id="pages"><span class="lab">页面</span></div>
+  <div class="row" id="states"><span class="lab">状态</span></div>
+  <div class="hint">提示：手机框内点击「扫描班干部确认码」「查看」「去签名」等按钮会真实跳转页面。</div>
+</div>
+
+<div class="stage">
+  <div class="phone">
+    <div class="statusbar"><span>10:52</span><span class="r">●●●● WiFi 78%</span></div>
+    <div class="navbar" id="navbar">
+      <span class="nav-back hidden" id="navback">‹</span>
+      <span class="nav-title" id="navtitle">工作台</span>
+      <div class="capsule"><span>···</span><span class="circle"></span></div>
+    </div>
+    <div class="screen" id="screen">
+
+      <!-- ===== 教师：首页-正常 ===== -->
+      <div class="pg" id="t-home">
+        <div class="hero">
+          <div class="who">唐瑞明</div>
+          <div class="sub">工号 2010032 · 计算机教研室 · 任课教师</div>
+        </div>
+        <div class="stat3">
+          <div><div class="n">3</div><div class="l">今日课程</div></div>
+          <div><div class="n">1</div><div class="l">已确认</div></div>
+          <div><div class="n">2</div><div class="l">待确认</div></div>
+        </div>
+        <div class="btn" data-go="t-create">扫描班干部确认码</div>
+        <div class="sec">今日授课 · 2026年9月27日 周日</div>
+        <div class="card">
+          <div class="line" data-go="t-detail-done">
+            <div class="m"><div class="t1">08:00–09:40　第1-2节　信息技术</div>
+              <div class="t2">2025级护理3班 · 实训楼A302 · 2学时 · 学委李思琪已签</div></div>
+            <span class="tag done">已确认</span>
+          </div>
+          <div class="line" data-go="t-detail-wait">
+            <div class="m"><div class="t1">10:05–11:45　第3-4节　信息技术</div>
+              <div class="t2">2025级药学1班 · 实训楼A302 · 2学时 · 等待学委确认</div></div>
+            <span class="tag wait">待确认</span>
+          </div>
+          <div class="line">
+            <div class="m"><div class="t1">14:00–15:40　第5-6节　信息技术</div>
+              <div class="t2">2025级检验2班 · 实训楼B105 · 2学时 · 未发起</div></div>
+            <span class="tag exp">未发起</span>
+          </div>
+        </div>
+        <div class="sec">本周</div>
+        <div class="card">
+          <div class="line" data-go="t-stat"><div class="m"><div class="t1">本周已确认学时</div>
+            <div class="t2">9月21日 – 9月27日 · 共 7 次课</div></div>
+            <div style="font-size:20px;font-weight:600;">14</div></div>
+        </div>
+      </div>
+
+      <!-- ===== 教师：首页-加载 ===== -->
+      <div class="pg hidden" id="t-home-loading">
+        <div class="hero"><div class="who">唐瑞明</div><div class="sub">工号 2010032 · 计算机教研室</div></div>
+        <div class="skel"><div class="b w40"></div><div class="b w80"></div><div class="b w60"></div><div class="b w80"></div><div class="b w60"></div></div>
+        <div class="card" style="border-top:1px solid var(--line)">
+          <div class="skel"><div class="b w60"></div><div class="b w40"></div></div>
+          <div class="skel"><div class="b w80"></div><div class="b w40"></div></div>
+        </div>
+        <div style="text-align:center;padding:16px;font-size:12px;color:var(--ink3)">加载中…</div>
+      </div>
+
+      <!-- ===== 教师：首页-空 ===== -->
+      <div class="pg hidden" id="t-home-empty">
+        <div class="hero"><div class="who">唐瑞明</div><div class="sub">工号 2010032 · 计算机教研室 · 任课教师</div></div>
+        <div class="btn" data-go="t-create">扫描班干部确认码</div>
+        <div class="empty">
+          <div class="ic">📭</div>
+          <div class="tx">今天没有授课任务</div>
+          <div class="sub">如有调课补课，可在「记录」里发起补签</div>
+        </div>
+      </div>
+
+      <!-- ===== 教师：首页-错误 ===== -->
+      <div class="pg hidden" id="t-home-error">
+        <div class="hero"><div class="who">唐瑞明</div><div class="sub">工号 2010032 · 计算机教研室</div></div>
+        <div class="err">
+          <div class="ic" style="font-size:40px;opacity:.25">⚠️</div>
+          <div class="tx">课表加载失败</div>
+          <div class="sub" style="font-size:12px;margin-top:6px">请检查网络后重试</div>
+        </div>
+        <div class="btn ghost wide">重新加载</div>
+      </div>
+
+      <!-- ===== 教师：发起确认 ===== -->
+      <div class="pg hidden" id="t-create">
+        <div class="tipbar blue">已扫描 2025级药学1班 · 学委 张一鸣 的确认码，信息已自动带出，请核对后提交。</div>
+        <div class="sec">本次授课（自动带出）</div>
+        <div class="card">
+          <div class="form-row"><span class="k">课程</span><span class="v">信息技术</span></div>
+          <div class="form-row"><span class="k">教学班</span><span class="v">2025级药学1班</span></div>
+          <div class="form-row"><span class="k">日期</span><span class="v"><input value="2026-09-27"></span></div>
+          <div class="form-row"><span class="k">节次</span><span class="v">第3-4节 10:05–11:45</span></div>
+          <div class="form-row"><span class="k">地点</span><span class="v"><input value="实训楼A302"></span></div>
+          <div class="form-row"><span class="k">应计学时</span><span class="v">2 学时</span></div>
+        </div>
+        <div class="sec">本次填写</div>
+        <div class="card">
+          <div class="form-row"><span class="k">缺勤人数</span><span class="v"><input placeholder="0" value="2"></span></div>
+          <div class="form-row"><span class="k">缺勤姓名</span><span class="v"><input placeholder="顿号或逗号分隔" value="刘洋、陈晨"></span></div>
+          <div class="form-row"><span class="k">课堂纪律</span><span class="v">
+            <span class="radios">
+              <label><input type="radio" name="disc" checked>好</label>
+              <label><input type="radio" name="disc">一般</label>
+              <label><input type="radio" name="disc">差</label>
+            </span></span></div>
+          <div class="form-row" style="align-items:flex-start"><span class="k" style="padding-top:2px">授课摘要</span><span class="v"><textarea rows="2" placeholder="选填">Excel 数据透视表实操，完成课堂练习。</textarea></span></div>
+          <div class="form-row"><span class="k">调停补课</span><span class="v ph">无</span></div>
+        </div>
+        <div class="sec">确认位置</div>
+        <div class="card">
+          <div class="form-row" id="locRow"><span class="k">定位</span><span class="v" style="color:var(--ink3)">未获取</span></div>
+        </div>
+        <div class="ban hidden" id="locDenied">未获得定位授权，本次记录将标记为「位置未授权」仍可提交。可在「我的 – 权限设置」重新开启。</div>
+        <div class="btn" id="btnSubmit">提交，等待学委确认</div>
+        <div class="btn ghost">保存草稿</div>
+        <div style="height:12px"></div>
+        <div class="mask hidden" id="locMask">
+          <div class="sheet">
+            <h3>获取你的位置信息</h3>
+            <p>用于记录本次课时确认的发生地点，作为课时真实性的证据之一。位置信息只用于教学管理与审计，不会公开。</p>
+            <div class="acts"><div class="no" id="locNo">不允许</div><div class="ok" id="locYes">允许</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 教师：记录详情-待确认 ===== -->
+      <div class="pg hidden" id="t-detail-wait">
+        <div class="tipbar">已提交，等待学委张一鸣核对并签名。当天 24 点前未确认将自动置为「已过期」。</div>
+        <div class="card">
+          <div class="line"><div class="m"><div class="t1" style="font-size:16px">信息技术 · 2025级药学1班</div>
+            <div class="t2">2026-09-27 第3-4节 10:05–11:45 · 实训楼A302</div></div>
+            <span class="tag wait">待确认</span></div>
+        </div>
+        <div class="sec">本次填写</div>
+        <div class="card">
+          <div class="form-row"><span class="k">应计学时</span><span class="v">2 学时</span></div>
+          <div class="form-row"><span class="k">缺勤</span><span class="v">2 人（刘洋、陈晨）</span></div>
+          <div class="form-row"><span class="k">课堂纪律</span><span class="v">好</span></div>
+          <div class="form-row" style="align-items:flex-start"><span class="k" style="padding-top:2px">授课摘要</span><span class="v" style="text-align:left">Excel 数据透视表实操，完成课堂练习。</span></div>
+        </div>
+        <div class="sec">提交信息</div>
+        <div class="evidence">
+          <div class="ev"><span class="k">提交时间</span><span class="v">2026-09-27 11:47</span></div>
+          <div class="ev"><span class="k">提交位置</span><span class="v">长沙市 · 实训楼A302（定位已授权）</span></div>
+          <div class="ev"><span class="k">设备</span><span class="v">iPhone 15 Pro · iOS 18.2 · 微信 8.0.52</span></div>
+          <div class="ev"><span class="k">动态码</span><span class="v">8F2K91（已使用）</span></div>
+        </div>
+        <div class="btn ghost">撤回本次提交</div>
+      </div>
+
+      <!-- ===== 教师：记录详情-已确认 ===== -->
+      <div class="pg hidden" id="t-detail-done">
+        <div class="card">
+          <div class="line"><div class="m"><div class="t1" style="font-size:16px">信息技术 · 2025级护理3班</div>
+            <div class="t2">2026-09-27 第1-2节 08:00–09:40 · 实训楼A302</div></div>
+            <span class="tag done">已确认</span></div>
+        </div>
+        <div class="sec">学委签名</div>
+        <div class="signimg">
+          <svg viewBox="0 0 170 80"><path d="M12 58c10-30 18-38 24-24s4 26 12 16 14-40 20-30 2 34 12 30 18-32 24-22 4 26 14 22 18-16 24-10" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </div>
+        <div class="evidence">
+          <div class="ev"><span class="k">确认人</span><span class="v">李思琪（2025级护理3班 学委）</span></div>
+          <div class="ev"><span class="k">确认时间</span><span class="v">2026-09-27 09:42</span></div>
+          <div class="ev"><span class="k">确认位置</span><span class="v">长沙市 · 实训楼A302</span></div>
+          <div class="ev"><span class="k">确认设备</span><span class="v">Redmi K70 · Android 14 · 微信 8.0.51</span></div>
+          <div class="ev"><span class="k">动态码</span><span class="v">A73Q05（已使用）</span></div>
+          <div class="ev"><span class="k">计入学时</span><span class="v">2 学时（已计入正式统计）</span></div>
+        </div>
+        <div class="sec">本次填写</div>
+        <div class="card">
+          <div class="form-row"><span class="k">缺勤</span><span class="v">0 人</span></div>
+          <div class="form-row"><span class="k">课堂纪律</span><span class="v">好</span></div>
+          <div class="form-row" style="align-items:flex-start"><span class="k" style="padding-top:2px">授课摘要</span><span class="v" style="text-align:left">信息技术导论与机房使用规范。</span></div>
+        </div>
+        <div class="btn ghost">对本次记录有异议</div>
+      </div>
+
+      <!-- ===== 教师：记录列表 ===== -->
+      <div class="pg hidden" id="t-list">
+        <div class="seg">
+          <div class="on">全部</div><div>待确认</div><div>已确认</div><div>已过期</div><div>已拒绝</div>
+        </div>
+        <div class="card">
+          <div class="line" data-go="t-detail-done"><div class="m"><div class="t1">信息技术 · 2025级护理3班</div>
+            <div class="t2">09-27 第1-2节 · 2学时 · 李思琪已签</div></div><span class="tag done">已确认</span></div>
+          <div class="line" data-go="t-detail-wait"><div class="m"><div class="t1">信息技术 · 2025级药学1班</div>
+            <div class="t2">09-27 第3-4节 · 2学时 · 等待确认</div></div><span class="tag wait">待确认</span></div>
+          <div class="line"><div class="m"><div class="t1">信息技术 · 2025级检验2班</div>
+            <div class="t2">09-24 第5-6节 · 2学时 · 超过当天24点未确认</div></div><span class="tag exp">已过期</span></div>
+          <div class="line"><div class="m"><div class="t1">医学信息检索 · 2025级护理1班</div>
+            <div class="t2">09-22 第3-4节 · 2学时 · 学委拒绝：当天为自习</div></div><span class="tag rej">已拒绝</span></div>
+          <div class="line"><div class="m"><div class="t1">信息技术 · 2025级护理3班</div>
+            <div class="t2">09-20 第1-2节 · 2学时 · 补签已通过</div></div><span class="tag mk">已补签</span></div>
+        </div>
+        <div class="sec">共 23 条 · 本学期已确认 76 学时</div>
+      </div>
+
+      <!-- ===== 教师：学时统计 ===== -->
+      <div class="pg hidden" id="t-stat">
+        <div class="seg"><div class="on">本周</div><div>本月</div><div>本学期</div><div>自定义</div></div>
+        <div class="big"><div><span class="n">14</span><span class="u">学时</span></div>
+          <div style="font-size:12px;color:var(--ink3)">9月21日 – 9月27日</div></div>
+        <div class="card">
+          <div class="line"><div class="m"><div class="t1">已确认</div><div class="t2">7 次课</div></div><div style="font-size:16px">14 学时</div></div>
+          <div class="line"><div class="m"><div class="t1">待确认</div><div class="t2">1 次课，当天24点前有效</div></div><div style="font-size:16px;color:#C97A16">2 学时</div></div>
+          <div class="line"><div class="m"><div class="t1">已过期</div><div class="t2">1 次课，需补签</div></div><div style="font-size:16px;color:var(--ink3)">2 学时</div></div>
+          <div class="line"><div class="m"><div class="t1">已补签</div><div class="t2">1 次课，已标注</div></div><div style="font-size:16px">2 学时</div></div>
+        </div>
+        <div class="sec">按课程</div>
+        <div class="card">
+          <div class="bar"><span class="nm">信息技术</span><span class="tr"><span class="fl" style="width:78%"></span></span><span class="vv">12 学时</span></div>
+          <div class="bar"><span class="nm">医学检索</span><span class="tr"><span class="fl" style="width:13%"></span></span><span class="vv">2 学时</span></div>
+        </div>
+        <div class="sec">按班级</div>
+        <div class="card">
+          <div class="bar"><span class="nm">护理3班</span><span class="tr"><span class="fl" style="width:43%"></span></span><span class="vv">6 学时</span></div>
+          <div class="bar"><span class="nm">药学1班</span><span class="tr"><span class="fl" style="width:29%"></span></span><span class="vv">4 学时</span></div>
+          <div class="bar"><span class="nm">检验2班</span><span class="tr"><span class="fl" style="width:21%"></span></span><span class="vv">3 学时</span></div>
+          <div class="bar"><span class="nm">护理1班</span><span class="tr"><span class="fl" style="width:7%"></span></span><span class="vv">1 学时</span></div>
+        </div>
+      </div>
+
+      <!-- ===== 班干部：出示码 ===== -->
+      <div class="pg hidden" id="s-code">
+        <div class="qrbox">
+          <div class="nm">张一鸣</div>
+          <div class="rl">2025级药学1班 · 学委</div>
+          <svg class="qr" viewBox="0 0 100 100">
+            <rect width="100" height="100" fill="#fff"/>
+            <g fill="#111">
+              <rect x="5" y="5" width="20" height="20"/><rect x="9" y="9" width="12" height="12" fill="#fff"/><rect x="13" y="13" width="4" height="4"/>
+              <rect x="75" y="5" width="20" height="20"/><rect x="79" y="9" width="12" height="12" fill="#fff"/><rect x="83" y="13" width="4" height="4"/>
+              <rect x="5" y="75" width="20" height="20"/><rect x="9" y="79" width="12" height="12" fill="#fff"/><rect x="13" y="83" width="4" height="4"/>
+              <rect x="30" y="6" width="4" height="4"/><rect x="38" y="6" width="4" height="4"/><rect x="46" y="6" width="4" height="4"/>
+              <rect x="58" y="6" width="4" height="4"/><rect x="66" y="6" width="4" height="4"/>
+              <rect x="30" y="14" width="4" height="4"/><rect x="50" y="14" width="4" height="4"/><rect x="62" y="14" width="4" height="4"/>
+              <rect x="6" y="30" width="4" height="4"/><rect x="14" y="30" width="4" height="4"/><rect x="26" y="30" width="4" height="4"/>
+              <rect x="34" y="30" width="4" height="4"/><rect x="46" y="30" width="4" height="4"/><rect x="58" y="30" width="4" height="4"/>
+              <rect x="70" y="30" width="4" height="4"/><rect x="78" y="30" width="4" height="4"/><rect x="90" y="30" width="4" height="4"/>
+              <rect x="14" y="38" width="4" height="4"/><rect x="30" y="38" width="4" height="4"/><rect x="42" y="38" width="4" height="4"/>
+              <rect x="54" y="38" width="4" height="4"/><rect x="70" y="38" width="4" height="4"/><rect x="86" y="38" width="4" height="4"/>
+              <rect x="6" y="46" width="4" height="4"/><rect x="22" y="46" width="4" height="4"/><rect x="38" y="46" width="4" height="4"/>
+              <rect x="50" y="46" width="4" height="4"/><rect x="66" y="46" width="4" height="4"/><rect x="82" y="46" width="4" height="4"/>
+              <rect x="14" y="54" width="4" height="4"/><rect x="26" y="54" width="4" height="4"/><rect x="46" y="54" width="4" height="4"/>
+              <rect x="58" y="54" width="4" height="4"/><rect x="74" y="54" width="4" height="4"/><rect x="90" y="54" width="4" height="4"/>
+              <rect x="6" y="62" width="4" height="4"/><rect x="18" y="62" width="4" height="4"/><rect x="34" y="62" width="4" height="4"/>
+              <rect x="42" y="62" width="4" height="4"/><rect x="62" y="62" width="4" height="4"/><rect x="78" y="62" width="4" height="4"/>
+              <rect x="30" y="70" width="4" height="4"/><rect x="46" y="70" width="4" height="4"/><rect x="62" y="70" width="4" height="4"/>
+              <rect x="78" y="70" width="4" height="4"/><rect x="90" y="70" width="4" height="4"/>
+              <rect x="30" y="78" width="4" height="4"/><rect x="42" y="78" width="4" height="4"/><rect x="54" y="78" width="4" height="4"/>
+              <rect x="66" y="78" width="4" height="4"/><rect x="82" y="78" width="4" height="4"/>
+              <rect x="34" y="86" width="4" height="4"/><rect x="50" y="86" width="4" height="4"/><rect x="62" y="86" width="4" height="4"/>
+              <rect x="74" y="86" width="4" height="4"/><rect x="86" y="86" width="4" height="4"/>
+              <rect x="42" y="94" width="4" height="4"/><rect x="58" y="94" width="4" height="4"/><rect x="70" y="94" width="4" height="4"/>
+            </g>
+          </svg>
+          <div class="cnt"><b id="sec">43</b> 秒后自动刷新</div>
+        </div>
+        <div class="tipbar">请任课老师扫描此码发起课时确认。二维码每 60 秒刷新一次，过期自动失效，请勿截图转发。</div>
+        <div class="btn ghost" id="btnRefresh">手动刷新</div>
+        <div class="sec">今日我确认的课时</div>
+        <div class="card">
+          <div class="line"><div class="m"><div class="t1">信息技术 · 2025级药学1班</div>
+            <div class="t2">09-27 第1-2节 · 2学时 · 09:42 已签名</div></div><span class="tag done">已确认</span></div>
+        </div>
+      </div>
+
+      <!-- ===== 班干部：出示码-已过期 ===== -->
+      <div class="pg hidden" id="s-code-dead">
+        <div class="qrbox">
+          <div class="nm">张一鸣</div><div class="rl">2025级药学1班 · 学委</div>
+          <svg class="qr dead" viewBox="0 0 100 100">
+            <rect width="100" height="100" fill="#fff"/>
+            <g fill="#111">
+              <rect x="5" y="5" width="20" height="20"/><rect x="9" y="9" width="12" height="12" fill="#fff"/><rect x="13" y="13" width="4" height="4"/>
+              <rect x="75" y="5" width="20" height="20"/><rect x="79" y="9" width="12" height="12" fill="#fff"/><rect x="83" y="13" width="4" height="4"/>
+              <rect x="5" y="75" width="20" height="20"/><rect x="9" y="79" width="12" height="12" fill="#fff"/><rect x="13" y="83" width="4" height="4"/>
+              <rect x="30" y="6" width="4" height="4"/><rect x="46" y="6" width="4" height="4"/><rect x="62" y="6" width="4" height="4"/>
+              <rect x="30" y="14" width="4" height="4"/><rect x="50" y="14" width="4" height="4"/>
+              <rect x="6" y="30" width="4" height="4"/><rect x="26" y="30" width="4" height="4"/><rect x="46" y="30" width="4" height="4"/>
+              <rect x="66" y="30" width="4" height="4"/><rect x="86" y="30" width="4" height="4"/>
+              <rect x="14" y="38" width="4" height="4"/><rect x="34" y="38" width="4" height="4"/><rect x="54" y="38" width="4" height="4"/>
+              <rect x="74" y="38" width="4" height="4"/><rect x="94" y="38" width="4" height="4"/>
+              <rect x="6" y="46" width="4" height="4"/><rect x="22" y="46" width="4" height="4"/><rect x="42" y="46" width="4" height="4"/>
+              <rect x="62" y="46" width="4" height="4"/><rect x="82" y="46" width="4" height="4"/>
+              <rect x="14" y="54" width="4" height="4"/><rect x="38" y="54" width="4" height="4"/><rect x="58" y="54" width="4" height="4"/>
+              <rect x="78" y="54" width="4" height="4"/>
+              <rect x="6" y="62" width="4" height="4"/><rect x="26" y="62" width="4" height="4"/><rect x="50" y="62" width="4" height="4"/>
+              <rect x="70" y="62" width="4" height="4"/><rect x="90" y="62" width="4" height="4"/>
+              <rect x="34" y="70" width="4" height="4"/><rect x="54" y="70" width="4" height="4"/><rect x="74" y="70" width="4" height="4"/>
+              <rect x="34" y="78" width="4" height="4"/><rect x="58" y="78" width="4" height="4"/><rect x="82" y="78" width="4" height="4"/>
+              <rect x="42" y="86" width="4" height="4"/><rect x="66" y="86" width="4" height="4"/><rect x="90" y="86" width="4" height="4"/>
+            </g>
+          </svg>
+          <div class="cnt"><b class="dead">二维码已失效</b></div>
+        </div>
+        <div class="tipbar" style="background:#FDECEC;color:#8A3A34">该二维码已超过 60 秒有效期，请刷新后重新出示给老师。</div>
+        <div class="btn" id="btnRefresh2">刷新二维码</div>
+      </div>
+
+      <!-- ===== 班干部：待确认列表 ===== -->
+      <div class="pg hidden" id="s-list">
+        <div class="tipbar">唐瑞明老师刚提交了 1 条课时，请核对后签名确认。</div>
+        <div class="card">
+          <div class="line" data-go="s-check"><div class="m"><div class="t1">信息技术 · 2025级药学1班</div>
+            <div class="t2">09-27 第3-4节 10:05–11:45 · 实训楼A302 · 2学时</div></div><span class="tag wait">待确认</span></div>
+          <div class="line" data-go="s-check"><div class="m"><div class="t1">信息技术 · 2025级药学1班</div>
+            <div class="t2">09-24 第5-6节 · 实训楼A302 · 2学时 · 已过期</div></div><span class="tag exp">已过期</span></div>
+        </div>
+        <div class="sec">当天 24 点前未确认将自动置为「已过期」</div>
+      </div>
+
+      <!-- ===== 班干部：待确认-空 ===== -->
+      <div class="pg hidden" id="s-list-empty">
+        <div class="empty">
+          <div class="ic">✅</div>
+          <div class="tx">没有待你确认的课时</div>
+          <div class="sub">老师发起确认后会出现在这里</div>
+        </div>
+      </div>
+
+      <!-- ===== 班干部：核对页 ===== -->
+      <div class="pg hidden" id="s-check">
+        <div class="sec">请核对以下信息，确认无误后签名</div>
+        <div class="card">
+          <div class="form-row"><span class="k">任课教师</span><span class="v">唐瑞明（工号 2010032）</span></div>
+          <div class="form-row"><span class="k">课程</span><span class="v">信息技术</span></div>
+          <div class="form-row"><span class="k">教学班</span><span class="v">2025级药学1班</span></div>
+          <div class="form-row"><span class="k">日期节次</span><span class="v">09-27 第3-4节 10:05–11:45</span></div>
+          <div class="form-row"><span class="k">地点</span><span class="v">实训楼A302</span></div>
+          <div class="form-row"><span class="k">应计学时</span><span class="v">2 学时</span></div>
+          <div class="form-row"><span class="k">缺勤</span><span class="v">2 人（刘洋、陈晨）</span></div>
+          <div class="form-row"><span class="k">课堂纪律</span><span class="v">好</span></div>
+          <div class="form-row" style="align-items:flex-start"><span class="k" style="padding-top:2px">授课摘要</span><span class="v" style="text-align:left">Excel 数据透视表实操，完成课堂练习。</span></div>
+        </div>
+        <div class="tipbar">签名即表示你确认本节课由该教师按上述时间地点完成授课，记录将用于学时统计与教学审计。</div>
+        <div class="btn" data-go="s-sign">信息无误，去签名</div>
+        <div class="btn ghost" data-go="s-reject">信息有误，拒绝确认</div>
+      </div>
+
+      <!-- ===== 班干部：签名页 ===== -->
+      <div class="pg hidden" id="s-sign">
+        <div class="sec">请在下方框内手写签名</div>
+        <div style="background:#fff;border-bottom:1px solid var(--line)">
+          <canvas class="pad" id="pad"></canvas>
+        </div>
+        <div style="background:#fff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line)">
+          <span style="font-size:12px;color:var(--ink3)">签名人：张一鸣（2025级药学1班 学委）</span>
+          <span style="font-size:14px;color:var(--brand);cursor:pointer" id="btnClear">清除</span>
+        </div>
+        <div class="tipbar">签名将与该课时记录、时间、地点、设备信息一并保存，作为确认证据。</div>
+        <div class="btn" data-go="s-done">确认无误，提交签名</div>
+        <div class="btn ghost">取消</div>
+      </div>
+
+      <!-- ===== 班干部：拒绝页 ===== -->
+      <div class="pg hidden" id="s-reject">
+        <div class="sec">请说明拒绝原因（必填）</div>
+        <div class="card">
+          <div class="form-row" style="align-items:flex-start"><span class="k" style="padding-top:2px">原因</span><span class="v"><textarea rows="3" placeholder="例如：当天实际为自习，教师未到课"></textarea></span></div>
+        </div>
+        <div class="card">
+          <div class="form-row"><span class="k">快速选择</span><span class="v ph">教师未到课 / 时间不符 / 课程不符 / 已调课</span></div>
+        </div>
+        <div class="tipbar" style="background:#FDECEC;color:#8A3A34">拒绝后该记录不计入学时，教师可在「记录」中发起申诉，由教务处处理。</div>
+        <div class="btn">提交拒绝</div>
+        <div class="btn ghost">返回</div>
+      </div>
+
+      <!-- ===== 班干部：提交成功 ===== -->
+      <div class="pg hidden" id="s-done">
+        <div style="background:#fff;padding:36px 20px;text-align:center;border-bottom:1px solid var(--line)">
+          <div style="font-size:44px">✅</div>
+          <div style="font-size:17px;font-weight:600;margin-top:10px">签名已提交</div>
+          <div style="font-size:13px;color:var(--ink3);margin-top:8px">该课时已计入唐瑞明老师的正式学时</div>
+        </div>
+        <div class="sec">本次确认</div>
+        <div class="card">
+          <div class="form-row"><span class="k">课程</span><span class="v">信息技术 · 2025级药学1班</span></div>
+          <div class="form-row"><span class="k">节次</span><span class="v">09-27 第3-4节 · 2学时</span></div>
+          <div class="form-row"><span class="k">确认时间</span><span class="v">2026-09-27 11:52</span></div>
+          <div class="form-row"><span class="k">确认地点</span><span class="v">长沙市 · 实训楼A302</span></div>
+        </div>
+        <div class="btn ghost" data-go="s-list">返回待确认列表</div>
+      </div>
+
+      <!-- ===== 教务处：看板 ===== -->
+      <div class="pg hidden" id="m-board">
+        <div class="hero"><div class="who">长沙卫生职业学院 · 教务处</div>
+          <div class="sub">2026-2027学年第一学期 · 第4周</div></div>
+        <div class="stat3">
+          <div><div class="n">1284</div><div class="l">本周已确认学时</div></div>
+          <div><div class="n">37</div><div class="l">待确认</div></div>
+          <div><div class="n">9</div><div class="l">异常记录</div></div>
+        </div>
+        <div class="seg"><div class="on">本周</div><div>本月</div><div>本学期</div></div>
+        <div class="sec">院系学时（已确认）</div>
+        <div class="card">
+          <div class="bar"><span class="nm">护理学院</span><span class="tr"><span class="fl" style="width:82%"></span></span><span class="vv">486</span></div>
+          <div class="bar"><span class="nm">药学院</span><span class="tr"><span class="fl" style="width:61%"></span></span><span class="vv">362</span></div>
+          <div class="bar"><span class="nm">医学技术系</span><span class="tr"><span class="fl" style="width:44%"></span></span><span class="vv">261</span></div>
+          <div class="bar"><span class="nm">公共课部</span><span class="tr"><span class="fl" style="width:29%"></span></span><span class="vv">175</span></div>
+        </div>
+        <div class="sec">待处理异常</div>
+        <div class="card">
+          <div class="line"><div class="m"><div class="t1">已过期未确认 5 条</div>
+            <div class="t2">超过当天 24 点，需教师发起补签</div></div><span class="tag exp">待处理</span></div>
+          <div class="line"><div class="m"><div class="t1">补签申请 3 条</div>
+            <div class="t2">待院系管理员审核</div></div><span class="tag mk">待审核</span></div>
+          <div class="line"><div class="m"><div class="t1">申诉 1 条</div>
+            <div class="t2">教师对拒绝记录有异议，待教务处处理</div></div><span class="tag rej">待处理</span></div>
+        </div>
+        <div class="sec">数据截至 2026-09-27 10:52 · 每 5 分钟刷新</div>
+      </div>
+
+    </div>
+    <div class="tabbar">
+      <div class="tab on" data-tab="tab1"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9 8h-6v10h-6V11H3z"/></svg><span>首页</span></div>
+      <div class="tab off" data-tab="tab2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z"/><path d="M8 12h8M8 16h5"/></svg><span>记录</span></div>
+      <div class="tab off" data-tab="tab3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/></svg><span>我的</span></div>
+    </div>
+    <div class="safe"></div>
+  </div>
+
+  <div style="max-width:420px;font-size:13px;color:#5B6066;line-height:1.85">
+    <b style="color:#1A1A1A">原型覆盖的核心闭环</b><br>
+    ① 学委出示动态码（60 秒刷新 / 已失效）<br>
+    ② 教师扫码发起确认（自动带出 + 填缺勤、纪律、摘要）<br>
+    ③ 定位授权弹窗（允许 / 不允许 → 降级不阻断）<br>
+    ④ 提交后进入待确认，含提交证据<br>
+    ⑤ 学委收到待确认 → 核对 → 手写签名（可真的写）<br>
+    ⑥ 拒绝确认（原因必填）<br>
+    ⑦ 签名提交成功 → 已确认，含签名与证据<br>
+    ⑧ 教师学时统计、教务处看板<br><br>
+    <b style="color:#1A1A1A">已覆盖状态</b><br>
+    加载中 · 空数据 · 网络错误 · 拒绝定位授权 · 二维码失效 · 已过期 · 已拒绝 · 已补签
+  </div>
+</div>
+
+<script>
+  var PAGES = {
+    teacher:[
+      ['t-home','首页（工作台）'],['t-create','发起确认（扫码后）'],['t-list','课时记录列表'],
+      ['t-detail-wait','详情·待确认'],['t-detail-done','详情·已确认'],['t-stat','学时统计']
+    ],
+    cadre:[
+      ['s-code','出示确认码'],['s-list','待确认列表'],['s-check','信息核对'],
+      ['s-sign','手写签名'],['s-reject','拒绝确认'],['s-done','提交成功']
+    ],
+    admin:[['m-board','统计看板']]
+  };
+  var STATES = {
+    't-home':[['t-home','正常'],['t-home-loading','加载中'],['t-home-empty','空数据（今日无课）'],['t-home-error','网络错误']],
+    't-create':[['t-create','正常'],['t-create','定位授权弹窗'],['t-create','拒绝定位授权后']],
+    's-code':[['s-code','正常（43 秒）'],['s-code-dead','二维码已失效']],
+    's-list':[['s-list','正常'],['s-list-empty','空数据']]
+  };
+  var TITLES = {
+    't-home':'工作台','t-home-loading':'工作台','t-home-empty':'工作台','t-home-error':'工作台',
+    't-create':'发起课时确认','t-list':'课时记录','t-detail-wait':'课时详情','t-detail-done':'课时详情',
+    't-stat':'学时统计','s-code':'我的确认码','s-code-dead':'我的确认码','s-list':'待我确认',
+    's-list-empty':'待我确认','s-check':'核对课时信息','s-sign':'手写签名','s-reject':'拒绝确认',
+    's-done':'确认完成','m-board':'统计看板'
+  };
+  var TABMAP = {
+    't-list':'tab2','t-stat':'tab2','t-detail-wait':'tab2','t-detail-done':'tab2',
+    's-list':'tab2','s-list-empty':'tab2','s-check':'tab2','s-sign':'tab2','s-reject':'tab2','s-done':'tab2'
+  };
+  var curRole='teacher', curPage='t-home';
+
+  function show(id, back){
+    var pgs=document.querySelectorAll('.pg');
+    for(var i=0;i<pgs.length;i++){pgs[i].classList.add('hidden');}
+    var el=document.getElementById(id);
+    if(el){el.classList.remove('hidden');}
+    document.getElementById('navtitle').textContent=TITLES[id]||'';
+    document.getElementById('navback').classList.toggle('hidden', !back);
+    var tabs=document.querySelectorAll('.tab');
+    var act=TABMAP[id]||'tab1';
+    for(var j=0;j<tabs.length;j++){
+      var on=tabs[j].getAttribute('data-tab')===act;
+      tabs[j].classList.toggle('on',on); tabs[j].classList.toggle('off',!on);
+    }
+    document.getElementById('screen').scrollTop=0;
+    curPage=id;
+    if(id==='t-create'){resetLoc();}
+    if(id==='s-sign'){initPad();}
+  }
+  function buildPages(){
+    var box=document.getElementById('pages');
+    box.innerHTML='<span class="lab">页面</span>';
+    PAGES[curRole].forEach(function(p){
+      var c=document.createElement('span');
+      c.className='chip'+(p[0]===curPage?' sel':'');
+      c.textContent=p[1];
+      c.onclick=function(){show(p[0], p[0].indexOf('detail')>0||p[0]==='t-create'||p[0]==='t-stat'||p[0]==='s-check'||p[0]==='s-sign'||p[0]==='s-reject'||p[0]==='s-done');};
+      box.appendChild(c);
+    });
+    var st=document.getElementById('states');
+    st.innerHTML='<span class="lab">状态</span>';
+    var list=STATES[curPage];
+    if(!list){st.innerHTML+='<span style="font-size:12px;color:#8A9099">该页面无状态变体</span>';return;}
+    list.forEach(function(s,i){
+      var c=document.createElement('span');
+      c.className='chip'+(i===0?' sel':'');
+      c.textContent=s[1];
+      c.onclick=function(){
+        var sibs=st.querySelectorAll('.chip');
+        for(var k=0;k<sibs.length;k++){sibs[k].classList.remove('sel');}
+        c.classList.add('sel');
+        if(s[1]==='定位授权弹窗'){document.getElementById('locMask').classList.remove('hidden');}
+        else if(s[1]==='拒绝定位授权后'){
+          document.getElementById('locMask').classList.add('hidden');
+          var r=document.getElementById('locRow');
+          r.querySelector('.v').innerHTML='<span style="color:#B8BEC5">未授权</span>';
+          document.getElementById('locDenied').classList.remove('hidden');
+        } else {show(s[0], curPage==='t-create');}
+      };
+      st.appendChild(c);
+    });
+  }
+  function setRole(r){
+    curRole=r;
+    var chips=document.querySelectorAll('[data-role]');
+    for(var i=0;i<chips.length;i++){chips[i].classList.toggle('sel', chips[i].getAttribute('data-role')===r);}
+    curPage=PAGES[r][0][0];
+    show(curPage,false);
+    buildPages();
+  }
+  function resetLoc(){
+    document.getElementById('locMask').classList.add('hidden');
+    document.getElementById('locDenied').classList.add('hidden');
+    document.getElementById('locRow').querySelector('.v').innerHTML='<span style="color:#8A9099">未获取</span>';
+  }
+
+  var chips=document.querySelectorAll('[data-role]');
+  for(var i=0;i<chips.length;i++){chips[i].onclick=function(){setRole(this.getAttribute('data-role'));};}
+  var gos=document.querySelectorAll('[data-go]');
+  for(var i=0;i<gos.length;i++){
+    gos[i].style.cursor='pointer';
+    gos[i].onclick=function(){show(this.getAttribute('data-go'), true); buildPages();};
+  }
+  document.getElementById('locYes').onclick=function(){
+    document.getElementById('locMask').classList.add('hidden');
+    document.getElementById('locRow').querySelector('.v').innerHTML='长沙市 · 实训楼A302';
+  };
+  document.getElementById('locNo').onclick=function(){
+    document.getElementById('locMask').classList.add('hidden');
+    document.getElementById('locRow').querySelector('.v').innerHTML='<span style="color:#B8BEC5">未授权</span>';
+    document.getElementById('locDenied').classList.remove('hidden');
+  };
+  document.getElementById('btnSubmit').onclick=function(){show('t-detail-wait',true); buildPages();};
+  document.getElementById('btnRefresh').onclick=function(){document.getElementById('sec').textContent='60';};
+  document.getElementById('btnRefresh2').onclick=function(){show('s-code',false); buildPages();};
+
+  var secEl=document.getElementById('sec'), secVal=43;
+  setInterval(function(){
+    if(!document.getElementById('s-code').classList.contains('hidden')){
+      secVal--; if(secVal<0){secVal=0;}
+      secEl.textContent=secVal;
+    }
+  },1000);
+
+  var padInit=false;
+  function initPad(){
+    if(padInit) return;
+    padInit=true;
+    var cv=document.getElementById('pad');
+    var dpr=window.devicePixelRatio||1;
+    var w=cv.clientWidth||343, h=200;
+    cv.width=w*dpr; cv.height=h*dpr;
+    var ctx=cv.getContext('2d');
+    ctx.scale(dpr,dpr);
+    ctx.lineWidth=2.5; ctx.strokeStyle='#1A1A1A'; ctx.lineCap='round'; ctx.lineJoin='round';
+    var drawing=false;
+    function pos(e){var r=cv.getBoundingClientRect();var t=(e.touches&&e.touches[0])||e;return {x:t.clientX-r.left,y:t.clientY-r.top};}
+    cv.addEventListener('pointerdown',function(e){drawing=true;var p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);cv.setPointerCapture(e.pointerId);});
+    cv.addEventListener('pointermove',function(e){if(!drawing)return;var p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke();});
+    cv.addEventListener('pointerup',function(){drawing=false;});
+    cv.addEventListener('pointerleave',function(){drawing=false;});
+    document.getElementById('btnClear').onclick=function(){ctx.clearRect(0,0,w,h);};
+  }
+
+  buildPages();
+  show('t-home',false);
+</script>
+</body>
+</html>

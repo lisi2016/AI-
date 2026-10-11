@@ -1,0 +1,7 @@
+/* 课时记录页：标签页与分页样式改为全局（app.wxss），这里只保留列表项补充样式 */
+
+.rec__line {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #5B6066;
+}

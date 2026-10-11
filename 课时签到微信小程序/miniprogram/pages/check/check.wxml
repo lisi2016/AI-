@@ -1,0 +1,113 @@
+<!-- 课时详情：本次课时信息 + 课程清单快照 + 确认信息 + 证据四项 + 审计尾部 -->
+<!-- 新流程无手写签名图、无任何定位信息 -->
+
+<block wx:if="{{ready && needBind}}">
+  <view class="state-box">
+    <view class="state-box__icon">🔒</view>
+    <view class="state-box__title">尚未绑定工号/学号</view>
+    <view class="state-box__desc">绑定后按你的身份展示该课时详情</view>
+  </view>
+  <view class="btn-primary" bindtap="goBind">去绑定</view>
+</block>
+
+<block wx:else>
+  <view class="tipbar tipbar--error" wx:if="{{loadError}}">{{loadError}}</view>
+
+  <view class="head">
+    <view class="head__course">{{session.courseName}}</view>
+    <view class="head__sub">{{session.className}} · {{session.teachDate || session.date}} · {{session.section}}<block wx:if="{{session.time}}"> {{session.time}}</block></view>
+    <view class="tag tag--{{session.status}} head__tag">{{session.statusText}}</view>
+    <text wx:if="{{session.isTempAdjusted}}" class="badge-temp">临时调整</text>
+  </view>
+
+  <view class="tipbar" wx:if="{{isLegacy}}">
+    这是旧流程的课时记录（教师发起 + 班干部签名）。新流程已改为「班干部出示二维码 · 教师扫码确认」，此处仅只读展示，不再提供手写签名与拒绝/撤销操作。
+  </view>
+
+  <view class="tipbar tipbar--error" wx:if="{{session.status === 'expired'}}">
+    超过当天 24:00 未确认，已置为已过期。请班干部在首页重新发起本节课时并出示二维码，教师扫码确认即可。
+  </view>
+  <view class="tipbar tipbar--info" wx:if="{{session.status === 'wait'}}">
+    等待任课教师确认：教师扫码或手输 6 位口令后点一下「确认本次课时」即完成，无需填写表单。
+  </view>
+
+  <view class="sec-title">本次课时信息</view>
+  <view class="card">
+    <view class="form-row"><view class="form-row__label">课程名</view><view class="form-row__value">{{session.courseName}}</view></view>
+    <view class="form-row"><view class="form-row__label">实际授课人</view><view class="form-row__value">{{session.teacherName}}<text wx:if="{{session.isTempAdjusted}}" class="badge-temp">临时调整</text></view></view>
+    <view class="form-row"><view class="form-row__label">班级</view><view class="form-row__value">{{session.className}}</view></view>
+    <view class="form-row"><view class="form-row__label">上课日期</view><view class="form-row__value">{{session.teachDate || session.date}}</view></view>
+    <view class="form-row"><view class="form-row__label">节次</view><view class="form-row__value">{{session.section || '—'}}<block wx:if="{{session.time}}">　{{session.time}}</block></view></view>
+    <view class="form-row"><view class="form-row__label">地点</view><view class="form-row__value">{{session.place || '—'}}</view></view>
+    <view class="form-row"><view class="form-row__label">学时</view><view class="form-row__value">{{session.hours}} 学时</view></view>
+    <view class="form-row"><view class="form-row__label">发起人</view><view class="form-row__value">{{session.initiatorDuty}} {{session.initiatorName}}</view></view>
+    <view class="form-row" wx:if="{{session.deadline}}"><view class="form-row__label">确认时限</view><view class="form-row__value">{{session.deadline}}</view></view>
+    <view class="form-row" wx:if="{{session.absentCount || session.absentNames}}"><view class="form-row__label">缺勤</view><view class="form-row__value">{{session.absentCount}} 人<block wx:if="{{session.absentNames}}">（{{session.absentNames}}）</block></view></view>
+    <view class="form-row form-row--stack" wx:if="{{session.summary}}">
+      <view class="form-row__label">授课摘要</view>
+      <view class="summary">{{session.summary}}</view>
+    </view>
+  </view>
+
+  <!-- 课程清单快照：本条课时来自哪条课程清单 -->
+  <block wx:if="{{course}}">
+    <view class="sec-title">课程清单快照</view>
+    <view class="card">
+      <view class="form-row"><view class="form-row__label">课程名</view><view class="form-row__value">{{course.courseName}}</view></view>
+      <view class="form-row"><view class="form-row__label">授课老师</view><view class="form-row__value">{{course.teacherName}}</view></view>
+      <view class="form-row"><view class="form-row__label">排课</view><view class="form-row__value">{{course.weekdayText || '未排课'}} {{course.section}}<block wx:if="{{course.startTime}}">　{{course.time}}</block></view></view>
+      <view class="form-row"><view class="form-row__label">地点</view><view class="form-row__value">{{course.place || '—'}}</view></view>
+      <view class="form-row"><view class="form-row__label">学时</view><view class="form-row__value">{{course.hours}} 学时</view></view>
+      <view class="form-row"><view class="form-row__label">状态</view><view class="form-row__value">{{course.statusText}}</view></view>
+    </view>
+  </block>
+
+  <!-- 确认信息 -->
+  <view class="sec-title">确认信息</view>
+  <view class="card">
+    <view class="form-row" wx:if="{{session.status === 'done' || session.confirmedName}}">
+      <view class="form-row__label">确认人</view>
+      <view class="form-row__value">{{session.confirmedName || '—'}}</view>
+    </view>
+    <view class="form-row" wx:if="{{session.status === 'done' || session.confirmedAt}}">
+      <view class="form-row__label">确认时间</view>
+      <view class="form-row__value">{{session.confirmedAt || '—'}}</view>
+    </view>
+    <view class="form-row" wx:if="{{session.status === 'done' || session.confirmDevice}}">
+      <view class="form-row__label">确认设备</view>
+      <view class="form-row__value">{{session.confirmDevice || '—'}}</view>
+    </view>
+    <view class="form-row"><view class="form-row__label">学时归属</view><view class="form-row__value">实际授课人 {{session.teacherName}}</view></view>
+  </view>
+  <view class="tipbar tipbar--error" wx:if="{{session.confirmNameMismatch}}">
+    确认人「{{session.confirmedName}}」与录入的实际授课人「{{session.teacherName}}」不同名（代课情形），已标记待提醒；学时仍按实际授课人计入。
+  </view>
+
+  <!-- 证据四项：动态码 / 确认人 / 确认时间 / 设备（无手写签名图、无定位） -->
+  <view class="sec-title">证据四项</view>
+  <view class="card">
+    <view class="form-row" wx:for="{{evidence}}" wx:key="label">
+      <view class="form-row__label">{{item.label}}</view>
+      <view class="form-row__value {{item.value === '—' ? 'form-row__placeholder' : ''}}">{{item.value}}</view>
+    </view>
+  </view>
+  <view class="tipbar tipbar--info" wx:if="{{code}}">
+    动态码 {{code.codeId}}<block wx:if="{{code.used}}"> · 已被消费（{{code.usedAt}}）</block><block wx:else> · 未消费</block>
+  </view>
+
+  <!-- 审计尾部 -->
+  <block wx:if="{{auditTail.length}}">
+    <view class="sec-title">操作留痕（最近 {{auditTail.length}} 条）</view>
+    <view class="card">
+      <view class="cell" wx:for="{{auditTail}}" wx:key="at">
+        <view class="cell__main">
+          <view class="cell__title">{{item.action}}</view>
+          <view class="cell__desc">{{item.actor}} · {{item.at}}<block wx:if="{{item.detail}}"> · {{item.detail}}</block></view>
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <view class="btn-ghost" bindtap="goRecords">查看全部课时记录</view>
+  <view class="foot-note">记录只作证据留痕，不等同《电子签名法》意义上的可靠电子签名。本系统不采集定位。</view>
+</block>

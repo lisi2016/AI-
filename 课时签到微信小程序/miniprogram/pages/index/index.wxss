@@ -1,0 +1,133 @@
+/* 首页样式：身份选择、工作台、出示码、看板 */
+
+.picker { padding-top: 40rpx; }
+.picker__title { font-size: 36rpx; font-weight: 600; padding: 0 32rpx 8rpx; }
+.picker__desc { font-size: 24rpx; color: #8A9099; padding: 0 32rpx 24rpx; }
+
+.arrow { color: #B8BEC5; font-size: 36rpx; flex: none; }
+
+.hero {
+  padding: 28rpx 32rpx;
+  background: #FFFFFF;
+  border-bottom: 1rpx solid #E6E8EB;
+}
+.hero__name { font-size: 30rpx; font-weight: 600; }
+.hero__sub { margin-top: 6rpx; font-size: 24rpx; color: #8A9099; }
+
+.big-num { font-size: 44rpx; font-weight: 600; flex: none; }
+
+/* 出示码 */
+.codebox {
+  padding: 40rpx 32rpx 32rpx;
+  background: #FFFFFF;
+  border-bottom: 1rpx solid #E6E8EB;
+  text-align: center;
+}
+.codebox__name { font-size: 30rpx; font-weight: 600; }
+.codebox__role { margin-top: 6rpx; font-size: 24rpx; color: #8A9099; }
+.codebox__count { margin-top: 24rpx; font-size: 26rpx; color: #8A9099; }
+.codebox__num { color: #07C160; font-size: 30rpx; }
+.codebox__count--dead { color: #D54941; }
+
+/* A 通道：真二维码画布（含静默区，画布本身为白色底） */
+.qr-wrap {
+  position: relative;
+  margin: 32rpx auto 0;
+  padding: 12rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #E6E8EB;
+  border-radius: 8rpx;
+  display: inline-block;
+  line-height: 0;
+}
+.qr-wrap.is-dead { opacity: 0.3; }
+.qr-canvas { display: block; background: #FFFFFF; }
+.qr-mask {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.72);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.6;
+}
+.qr-mask__text { font-size: 34rpx; font-weight: 600; color: #D54941; }
+.qr-mask__sub { margin-top: 8rpx; padding: 0 24rpx; font-size: 22rpx; color: #8A9099; }
+.qr-loading {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  color: #8A9099;
+  background: rgba(255, 255, 255, 0.85);
+  line-height: 1.6;
+}
+
+/* B 通道：6 位数字口令 */
+.passcode-label { margin-top: 28rpx; font-size: 24rpx; color: #8A9099; }
+.passcode {
+  margin: 12rpx auto 0;
+  padding: 16rpx 24rpx;
+  min-width: 440rpx;
+  display: inline-block;
+  background: #F7F8FA;
+  border: 1rpx dashed #C8CDD4;
+  border-radius: 10rpx;
+}
+.passcode.is-dead { opacity: 0.35; }
+.passcode__value {
+  font-size: 68rpx;
+  font-weight: 700;
+  letter-spacing: 10rpx;
+  color: #07C160;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+}
+.passcode-hint { margin-top: 10rpx; font-size: 22rpx; color: #B8BEC5; }
+.code-id { margin-top: 12rpx; font-size: 22rpx; color: #B8BEC5; }
+
+/* 教师端入口的脚注（本页版式略紧于全局 .foot-note） */
+.foot-note {
+  padding: 4rpx 32rpx 24rpx;
+  font-size: 22rpx;
+  color: #8A9099;
+  line-height: 1.7;
+}
+
+/* 看板条形图 */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 20rpx 32rpx;
+  border-bottom: 1rpx solid #E6E8EB;
+}
+.bar:last-child { border-bottom: none; }
+.bar__name { width: 140rpx; flex: none; font-size: 26rpx; color: #5B6066; }
+.bar__track { flex: 1; height: 20rpx; background: #F0F2F4; border-radius: 10rpx; overflow: hidden; }
+.bar__fill { height: 20rpx; background: #07C160; border-radius: 10rpx; }
+.bar__value { width: 104rpx; text-align: right; flex: none; font-size: 24rpx; color: #5B6066; }
+
+/* 今日课程：一门课一行 + 出示二维码 / 临时调整 */
+.course {
+  padding: 26rpx 32rpx;
+  border-bottom: 1rpx solid #E6E8EB;
+}
+.course:last-child { border-bottom: none; }
+.course__head {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.course__name { flex: 1; font-size: 30rpx; font-weight: 600; }
+.course__line { margin-top: 8rpx; font-size: 24rpx; color: #5B6066; }
+.course__ops { display: flex; gap: 24rpx; margin-top: 18rpx; }
+

@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI 方案对比 · 课堂课时确认小程序</title>
+<style>
+  :root{
+    --page:#F5F6F7; --ink:#1A1A1A; --ink-2:#5B6066; --ink-3:#8A9099;
+    --line:#E6E8EB; --card:#FFFFFF;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:28px 24px 60px; background:var(--page); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  }
+  h1{font-size:22px;margin:0 0 6px;}
+  .lead{color:var(--ink-2);font-size:13px;margin:0 0 26px;line-height:1.7;max-width:900px;}
+  .lead b{color:var(--ink);}
+
+  .option{
+    background:#fff;border:1px solid var(--line);border-radius:14px;
+    padding:20px 22px 24px;margin-bottom:30px;
+  }
+  .option h2{font-size:17px;margin:0 0 8px;}
+  .badges{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+  .badge{
+    font-size:12px;padding:4px 10px;border-radius:6px;background:#F0F2F5;color:var(--ink-2);
+  }
+  .badge b{color:var(--ink);font-weight:600;}
+  .diff{font-size:13px;color:var(--ink-2);line-height:1.75;margin:0 0 18px;max-width:940px;}
+  .diff b{color:var(--ink);}
+
+  .frames{display:flex;flex-wrap:wrap;gap:26px;}
+  figure{margin:0;}
+  figcaption{font-size:12px;color:var(--ink-3);margin-bottom:8px;}
+
+  /* 手机框 */
+  .phone{
+    width:375px;background:#fff;border:1px solid #D9DCE1;border-radius:26px;overflow:hidden;
+    box-shadow:0 4px 14px rgba(20,25,35,.07);display:flex;flex-direction:column;
+  }
+  .statusbar{
+    height:34px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 16px;font-size:12px;font-weight:600;color:#111;background:#fff;flex:none;
+  }
+  .statusbar .right{display:flex;align-items:center;gap:4px;font-size:11px;}
+  .navbar{
+    height:44px;position:relative;display:flex;align-items:center;justify-content:center;
+    flex:none;background:#fff;border-bottom:1px solid var(--line);
+  }
+  .nav-title{font-size:16px;font-weight:600;}
+  .capsule{
+    position:absolute;right:10px;top:8px;height:28px;width:88px;border-radius:14px;
+    border:1px solid #E2E4E8;display:flex;align-items:center;justify-content:space-around;
+    font-size:13px;color:#3A3F45;background:rgba(247,247,247,.95);
+  }
+  .capsule .dots{letter-spacing:1px;}
+  .capsule .circle{width:14px;height:14px;border:1.5px solid #6B7178;border-radius:50%;position:relative;}
+  .capsule .circle::after{content:"";position:absolute;inset:3px;background:#6B7178;border-radius:50%;}
+  .screen{flex:1;min-height:520px;overflow:hidden;background:#F2F3F5;}
+  .tabbar{
+    display:flex;flex:none;background:#fff;border-top:1px solid var(--line);
+    padding:6px 0 4px;
+  }
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center;}
+  .tab svg{width:24px;height:24px;}
+  .tab span{font-size:11px;}
+  .safe{height:18px;background:#fff;flex:none;position:relative;}
+  .safe::after{
+    content:"底部安全区 env(safe-area-inset-bottom)";
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:9px;color:#C2C7CD;background:#FAFAFA;border-top:1px dashed #E6E8EB;
+  }
+
+  /* ---------- 方案 A：微信原生 / WeUI ---------- */
+  .a{--brand:#07C160;--brand-ink:#FFFFFF;--radius:4px;--gap:12px;--sub:#8A9099;}
+  .a .screen{background:#F2F3F5;}
+  .a .panel{background:#fff;}
+  .a .hero{
+    background:#fff;padding:14px 16px;border-bottom:1px solid var(--line);
+  }
+  .a .hero .who{font-size:15px;font-weight:600;}
+  .a .hero .sub{font-size:12px;color:var(--sub);margin-top:3px;}
+  .a .stat{
+    display:flex;background:#fff;border-bottom:1px solid var(--line);
+  }
+  .a .stat div{flex:1;text-align:center;padding:12px 0;}
+  .a .stat div+div{border-left:1px solid var(--line);}
+  .a .stat .num{font-size:20px;font-weight:600;}
+  .a .stat .lbl{font-size:11px;color:var(--sub);margin-top:2px;}
+  .a .primary{
+    margin:var(--gap);height:46px;background:var(--brand);color:#fff;border-radius:var(--radius);
+    display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:500;
+  }
+  .a .sec-title{
+    font-size:13px;color:var(--sub);padding:6px 16px 6px;background:#F2F3F5;
+  }
+  .a .cell{background:#fff;padding:12px 16px;border-bottom:1px solid var(--line);display:flex;gap:10px;}
+  .a .cell .main{flex:1;min-width:0;}
+  .a .cell .t1{font-size:15px;font-weight:500;}
+  .a .cell .t2{font-size:12px;color:var(--sub);margin-top:4px;}
+  .a .tag{
+    font-size:11px;padding:2px 7px;border-radius:3px;align-self:flex-start;flex:none;
+  }
+  .tag.done{background:#E8F8EE;color:#07A050;}
+  .tag.wait{background:#FFF4E5;color:#C97A16;}
+  .a .week{background:#fff;padding:12px 16px;font-size:13px;color:var(--ink-2);}
+  .a .week b{font-size:17px;color:var(--ink);}
+
+  .a .codebox{background:#fff;padding:18px 16px;text-align:center;border-bottom:1px solid var(--line);}
+  .a .codebox .name{font-size:15px;font-weight:600;}
+  .a .codebox .role{font-size:12px;color:var(--sub);margin-top:3px;}
+  .a .qr{margin:14px auto 10px;width:190px;height:190px;}
+  .a .count{font-size:13px;color:var(--sub);}
+  .a .count b{color:var(--brand);font-size:15px;}
+  .a .tip{background:#fff;padding:12px 16px;font-size:13px;color:var(--ink-2);line-height:1.6;}
+  .a .ghost{
+    margin:var(--gap);height:44px;border:1px solid #D9DCE1;border-radius:var(--radius);
+    display:flex;align-items:center;justify-content:center;font-size:15px;color:#3A3F45;
+  }
+
+  /* ---------- 方案 B：TDesign 定制 ---------- */
+  .b{--brand:#0052D9;--brand-soft:#E7EEFC;--radius:12px;--gap:12px;--sub:#8A9099;}
+  .b .screen{background:#F4F5F7;}
+  .b .hero{
+    background:var(--brand);color:#fff;padding:16px;border-radius:0 0 var(--radius) var(--radius);
+  }
+  .b .hero .who{font-size:16px;font-weight:600;}
+  .b .hero .sub{font-size:12px;opacity:.85;margin-top:4px;}
+  .b .stat{display:flex;gap:8px;padding:var(--gap);}
+  .b .stat div{
+    flex:1;background:#fff;border-radius:var(--radius);padding:12px 8px;text-align:center;
+    box-shadow:0 1px 3px rgba(20,25,35,.06);
+  }
+  .b .stat .num{font-size:20px;font-weight:600;color:var(--brand);}
+  .b .stat .lbl{font-size:11px;color:var(--sub);margin-top:2px;}
+  .b .primary{
+    margin:0 var(--gap) var(--gap);height:48px;background:var(--brand);color:#fff;
+    border-radius:var(--radius);display:flex;align-items:center;justify-content:center;
+    font-size:16px;font-weight:500;box-shadow:0 2px 8px rgba(0,82,217,.22);
+  }
+  .b .sec-title{font-size:13px;font-weight:600;padding:4px 16px 8px;}
+  .b .cell{
+    background:#fff;border-radius:var(--radius);margin:0 var(--gap) 8px;padding:14px;
+    box-shadow:0 1px 3px rgba(20,25,35,.06);display:flex;gap:10px;
+  }
+  .b .cell .t1{font-size:15px;font-weight:600;}
+  .b .cell .t2{font-size:12px;color:var(--sub);margin-top:5px;line-height:1.5;}
+  .b .week{
+    background:#fff;border-radius:var(--radius);margin:0 var(--gap);padding:14px;
+    display:flex;align-items:baseline;justify-content:space-between;font-size:13px;color:var(--ink-2);
+    box-shadow:0 1px 3px rgba(20,25,35,.06);
+  }
+  .b .week b{font-size:20px;color:var(--brand);}
+  .b .codebox{
+    background:#fff;border-radius:var(--radius);margin:var(--gap);padding:18px 16px;text-align:center;
+    box-shadow:0 1px 3px rgba(20,25,35,.06);
+  }
+  .b .codebox .name{font-size:16px;font-weight:600;}
+  .b .codebox .role{
+    display:inline-block;font-size:11px;color:var(--brand);background:var(--brand-soft);
+    padding:2px 8px;border-radius:10px;margin-top:6px;
+  }
+  .b .qr{margin:14px auto 10px;width:190px;height:190px;}
+  .b .count{font-size:13px;color:var(--sub);}
+  .b .count b{color:var(--brand);font-size:15px;}
+  .b .tip{
+    background:#FFF9E8;border-radius:var(--radius);margin:0 var(--gap) var(--gap);padding:12px 14px;
+    font-size:12px;color:#8A6A1F;line-height:1.6;
+  }
+  .b .ghost{
+    margin:0 var(--gap);height:46px;border:1px solid var(--brand);color:var(--brand);
+    border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:15px;
+  }
+
+  /* ---------- 方案 C：差异化（原生 + 自定义 WXSS） ---------- */
+  .c{--brand:#1B5EFC;--brand2:#0E3FBF;--radius:16px;--gap:14px;--sub:#8A9099;}
+  .c .screen{background:#F3F5FA;}
+  .c .hero{
+    background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;padding:18px 18px 20px;
+  }
+  .c .hero .who{font-size:17px;font-weight:700;letter-spacing:.3px;}
+  .c .hero .sub{font-size:12px;opacity:.88;margin-top:5px;}
+  .c .bignum{margin-top:14px;display:flex;align-items:baseline;gap:6px;}
+  .c .bignum .v{font-size:38px;font-weight:700;line-height:1;}
+  .c .bignum .u{font-size:13px;opacity:.9;}
+  .c .bignum .lbl{font-size:11px;opacity:.8;margin-left:auto;align-self:flex-end;}
+  .c .stat{display:flex;gap:10px;padding:var(--gap) var(--gap) 0;}
+  .c .stat div{
+    flex:1;background:#fff;border-radius:14px;padding:12px 8px;text-align:center;
+    box-shadow:0 2px 10px rgba(27,94,252,.10);
+  }
+  .c .stat .num{font-size:21px;font-weight:700;color:var(--brand);}
+  .c .stat .lbl{font-size:11px;color:var(--sub);margin-top:2px;}
+  .c .primary{
+    margin:var(--gap);height:52px;border-radius:26px;color:#fff;font-size:17px;font-weight:600;
+    background:linear-gradient(135deg,var(--brand),var(--brand2));
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 6px 16px rgba(27,94,252,.30);
+  }
+  .c .sec-title{font-size:13px;font-weight:600;padding:6px 18px 8px;}
+  .c .cell{
+    background:#fff;border-radius:var(--radius);margin:0 var(--gap) 10px;padding:14px 16px;
+    box-shadow:0 2px 10px rgba(20,25,35,.07);display:flex;gap:12px;align-items:center;
+    border-left:4px solid var(--brand);
+  }
+  .c .cell.pending{border-left-color:#F5A623;}
+  .c .cell .t1{font-size:15px;font-weight:600;}
+  .c .cell .t2{font-size:12px;color:var(--sub);margin-top:5px;line-height:1.5;}
+  .c .week{
+    background:#fff;border-radius:var(--radius);margin:0 var(--gap);padding:14px 16px;
+    display:flex;align-items:center;justify-content:space-between;
+    box-shadow:0 2px 10px rgba(20,25,35,.07);
+  }
+  .c .week .l{font-size:13px;color:var(--ink-2);}
+  .c .week b{font-size:22px;color:var(--brand);}
+  .c .codebox{
+    background:#fff;border-radius:var(--radius);margin:var(--gap);padding:20px 16px;text-align:center;
+    box-shadow:0 2px 12px rgba(20,25,35,.08);
+  }
+  .c .codebox .name{font-size:17px;font-weight:700;}
+  .c .codebox .role{font-size:12px;color:var(--sub);margin-top:5px;}
+  .c .qr{
+    margin:16px auto 12px;width:200px;height:200px;border-radius:12px;padding:10px;
+    background:linear-gradient(135deg,#EEF3FF,#FFFFFF);box-shadow:0 2px 10px rgba(27,94,252,.12);
+  }
+  .c .count{font-size:13px;color:var(--sub);}
+  .c .count b{color:var(--brand);font-size:16px;}
+  .c .tip{
+    background:#EEF3FF;border-radius:12px;margin:0 var(--gap) var(--gap);padding:12px 14px;
+    font-size:12px;color:#2B4E9B;line-height:1.6;
+  }
+  .c .ghost{
+    margin:0 var(--gap);height:46px;border-radius:23px;border:1px solid var(--brand);color:var(--brand);
+    display:flex;align-items:center;justify-content:center;font-size:15px;
+  }
+  .tab.on{color:var(--brand);}
+  .tab.off{color:#9AA0A6;}
+  .note{font-size:12px;color:#9AA0A6;margin-top:14px;line-height:1.7;}
+</style>
+</head>
+<body>
+
+<h1>UI 方案对比 · 课堂课时确认与学时统计小程序</h1>
+<p class="lead">
+三套方案使用 <b>同一页面、同一业务数据、同一功能范围</b> 做公平比较，只改变视觉表达和布局：教师端首页（工作台，最高频任务页）+ 班干部端出示确认码页。
+画布统一 <b>375px</b>，均显示状态栏、微信胶囊、顶部避让区、底部导航与底部安全区。
+<b>这是 HTML 预览，不是最终小程序</b>——最终效果以微信开发者工具和安卓、iPhone 真机为准。
+</p>
+
+<!-- ============ 方案 A ============ -->
+<section class="option">
+  <h2>A · 微信原生稳妥方向</h2>
+  <div class="badges">
+    <span class="badge">组件来源：<b>WeUI + 原生组件</b></span>
+    <span class="badge">实现难度：<b>低</b></span>
+    <span class="badge">落地风险：<b>低</b></span>
+    <span class="badge">额外依赖：<b>无</b></span>
+  </div>
+  <p class="diff">
+    <b>长相：</b>白底、灰色分割线、小圆角（4px）、系统字体，和微信自带的界面几乎一样，教师上手零学习成本。
+    <b>优点：</b>实现最快、包体最小、不依赖任何第三方库，微信原生感最强，审核与兼容风险最低。
+    <b>缺点：</b>没有学校品牌感；学时数字只是普通文字，不突出；界面偏"工具表单"，教师快速扫一眼抓不到重点。
+    <b>适合：</b>想尽快上线试运行、先把流程跑通再做视觉的情况。
+  </p>
+  <div class="frames">
+    <figure>
+      <figcaption>教师端首页（工作台）· 选中"首页"</figcaption>
+      <div class="phone a">
+        <div class="statusbar"><span>9:41</span><span class="right">●●● WiFi ▮</span></div>
+        <div class="navbar"><span class="nav-title">工作台</span>
+          <div class="capsule"><span class="dots">···</span><span class="circle"></span></div>
+        </div>
+        <div class="screen">
+          <div class="hero">
+            <div class="who">唐瑞明</div>
+            <div class="sub">工号 2010032 · 计算机教研室 · 任课教师</div>
+          </div>
+          <div class="stat">
+            <div><div class="num">3</div><div class="lbl">今日课程</div></div>
+            <div><div class="num">1</div><div class="lbl">已确认</div></div>
+            <div><div class="num">2</div><div class="lbl">待确认</div></div>
+          </div>
+          <div class="primary">扫描班干部确认码</div>
+          <div class="sec-title">今日授课</div>
+          <div class="cell">
+            <div class="main">
+              <div class="t1">08:00–09:40　第1-2节　信息技术</div>
+              <div class="t2">2025级护理3班 · 实训楼A302 · 2学时</div>
+            </div>
+            <span class="tag done">已确认</span>
+          </div>
+          <div class="cell">
+            <div class="main">
+              <div class="t1">10:05–11:45　第3-4节　信息技术</div>
+              <div class="t2">2025级药学1班 · 实训楼A302 · 2学时</div>
+            </div>
+            <span class="tag wait">待确认</span>
+          </div>
+          <div class="cell">
+            <div class="main">
+              <div class="t1">14:00–15:40　第5-6节　信息技术</div>
+              <div class="t2">2025级检验2班 · 实训楼B105 · 2学时</div>
+            </div>
+            <span class="tag wait">待确认</span>
+          </div>
+          <div class="week">本周已确认学时　<b>14</b> 学时</div>
+        </div>
+        <div class="tabbar">
+          <div class="tab on"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9 8h-6v10h-6V11H3z"/></svg><span>首页</span></div>
+          <div class="tab off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span>课表</span></div>
+          <div class="tab off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z"/><path d="M8 12h8M8 16h5"/></svg><span>记录</span></div>
+          <div class="tab off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/></svg><span>我的</span></div>
+        </div>
+        <div class="safe"></div>
+      </div>
+    </figure>
+
+    <figure>
+      <figcaption>班干部端 · 出示确认码（60 秒刷新）</figcaption>
+      <div class="phone a">
+        <div class="statusbar"><span>9:41</span><span class="right">●●● WiFi ▮</span></div>
+        <div class="navbar"><span class="nav-title">我的确认码</span>
+          <div class="capsule"><span class="dots">···</span><span class="circle"></span></div>
+        </div>
+        <div class="screen">
+          <div class="codebox">
+            <div class="name">李思琪</div>
+            <div class="role">2025级护理3班 · 学委</div>
+            <svg class="qr" viewBox="0 0 100 100">
+              <rect width="100" height="100" fill="#fff"/>
+              <g fill="#111">
+                <rect x="5" y="5" width="20" height="20"/><rect x="9" y="9" width="12" height="12" fill="#fff"/><rect x="13" y="13" width="4" height="4"/>
+                <rect x="75" y="5" width="20" height="20"/><rect x="79" y="9" width="12" height="12" fill="#fff"/><rect x="83" y="13" width="4" height="4"/>
+                <rect x="5" y="75" width="20" height="20"/><rect x="9" y="79" width="12" height="12" fill="#fff"/><rect x="13" y="83" width="4" height="4"/>
+                <rect x="30" y="6" width="4" height="4"/><rect x="38" y="6" width="4" height="4"/><rect x="46" y="6" width="4" height="4"/>
+                <rect x="58" y="6" width="4" height="4"/><rect x="66" y="6" width="4" height="4"/>
+                <rect x="30" y="14" width="4" height="4"/><rect x="50" y="14" width="4" height="4"/><rect x="62" y="14" width="4" height="4"/>
+                <rect x="6" y="30" width="4" height="4"/><rect x="14" y="30" width="4" height="4"/><rect x="26" y="30" width="4" height="4"/>
+                <rect x="34" y="30" width="4" height="4"/><rect x="46" y="30" width="4" height="4"/><rect x="58" y="30" width="4" height="4"/>
+                <rect x="70" y="30" width="4" height="4"/><rect x="78" y="30" width="4" height="4"/><rect x="90" y="30" width="4" height="4"/>
+                <rect x="14" y="38" width="4" height="4"/><rect x="30" y="38" width="4" height="4"/><rect x="42" y="38" width="4" height="4"/>
+                <rect x="54" y="38" width="4" height="4"/><rect x="70" y="38" width="4" height="4"/><rect x="86" y="38" width="4" height="4"/>
+                <rect x="6" y="46" width="4" height="4"/><rect x="22" y="46" width="4" height="4"/><rect x="38" y="46" width="4" height="4"/>
+                <rect x="50" y="46" width="4" height="4"/><rect x="66" y="46" width="4" height="4"/><rect x="82" y="46" width="4" height="4"/>
+                <rect x="14" y="54" width="4" height="4"/><rect x="26" y="54" width="4" height="4"/><rect x="46" y="54" width="4" height="4"/>
+                <rect x="58" y="54" width="4" height="4"/><rect x="74" y="54" width="4" height="4"/><rect x="90" y="54" width="4" height="4"/>
+                <rect x="6" y="62" width="4" height="4"/><rect x="18" y="62" width="4" height="4"/><rect x="34" y="62" width="4" height="4"/>
+                <rect x="42" y="62" width="4" height="4"/><rect x="62" y="62" width="4" height="4"/><rect x="78" y="62" width="4" height="4"/>
+                <rect x="30" y="70" width="4" height="4"/><rect x="46" y="70" width="4" height="4"/><rect x="62" y="70" width="4" height="4"/>
+                <rect x="78" y="70" width="4" height="4"/><rect x="90" y="70" width="4" height="4"/>
+                <rect x="30" y="78" width="4" height="4"/><rect x="42" y="78" width="4" height="4"/><rect x="54" y="78" width="4" height="4"/>
+                <rect x="66" y="78" width="4" height="4"/><rect x="82" y="78" width="4" height="4"/>
+                <rect x="34" y="86" width="4" height="4"/><rect x="50" y="86" width="4" height="4"/><rect x="62" y="86" width="4" height="4"/>
+                <rect x="74" y="86" width="4" height="4"/><rect x="86" y="86" width="4" height="4"/>
+                <rect x="42" y="94" width="4" height="4"/><rect x="58" y="94" width="4" height="4"/><rect x="70" y="94" width="4" height="4"/>
+              </g>
+            </svg>
+            <div class="count"><b>58</b> 秒后自动刷新</div>
+          </div>
+          <div class="tip">请任课老师扫描此码发起课时确认。<br>二维码每 60 秒刷新一次，过期自动失效，请勿截图转发。</div>
+          <div class="ghost">手动刷新</div>
+        </div>
+        <div class="tabbar">
+          <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h7v7h-7z"/></svg><span>出示码</span></div>
+          <div class="tab off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z"/><path d="M8 12h8M8 16h5"/></svg><span>待确认</span></div>
+          <div class="tab off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg><span>历史</span></div>
+          <div class="tab off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/></svg><span>我的</span></div>
+        </div>
+        <div class="safe"></div>
+      </div>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ 方案 B ============ -->
+<section class="option">
+  <h2>B · 品牌定制方向（TDesign MiniProgram）</h2>
+  <div class="badges">
+    <span class="badge">组件来源：<b>TDesign MiniProgram</b></span>
+    <span class="badge">实现难度：<b>中</b></span>
+    <span class="badge">落地风险：<b>中</b></span>
+    <span class="badge">额外依赖：<b>npm 构建 + 包体增加</b></span>
+  </div>
+  <p class="diff">
+    <b>长相：</b>TDesign 品牌蓝（#0052D9）、卡片化布局、12px 圆角、统一浅灰底色，数据用卡片承载，层次清晰。
+    <b>优点：</b>表单、列表、数据展示、日期选择、步骤条等组件齐全，后续加"补签审核""统计筛选"这类复杂表单最省事；品牌色可定制成学校色。
+    <b>缺点：</b>需要 npm 构建小程序，包体积增加，要跟随组件库版本升级；视觉仍是标准企业管理后台风格，辨识度一般。
+    <b>适合：</b>后续功能会持续扩展（审核流、规则配置、统计筛选）的情况。
+  </p>
+  <div class="frames">
+    <figure>
+      <figcaption>教师端首页（工作台）· 选中"首页"</figcaption>
+      <div class="phone b">
+        <div class="statusbar"><span>9:41</span><span class="right">●●● WiFi ▮</span></div>
+        <div class="navbar"><span class="nav-title">工作台</span>
+          <div class="capsule"><span class="dots">···</span><span class="circle"></span></div>
+        </div>
+        <div class="screen">
+          <div class="hero">
+            <div class="who">唐瑞明</div>
+            <div class="sub">工号 2010032 · 计算机教研室 · 任课教师</div>
+          </div>
+          <div class="stat">
+            <div><div class="num">3</div><div class="lbl">今日课程</div></div>
+            <div><div class="num">1</div><div class="lbl">已确认</div></div>
+            <div><div class="num">2</div><div class="lbl">待确认</div></div>
+          </div>
+          <div class="primary">扫描班干部确认码</div>
+          <div class="sec-title">今日授课</div>
+          <div class="cell">
+            <div class="main">
+              <div class="t1">08:00–09:40　第1-2节　信息技术</div>
+              <div class="t2">2025级护理3班 · 实训楼A302 · 2学时</div>
+            </div>
+            <span class="tag done">已确认</span>
+          </div>
+          <div class="cell">
+            <div class="main">
+              <div class="t1">10:05–11:45　第3-4节　信息技术</div>
+              <div class="t2">2025级药学1班 · 实训楼A302 · 2学时</div>
+            </div>
+            <span class="tag wait">待确认</span>
+          </div>
+          <div class="cell">
+            <div class="main">
+              <div class="t1">14:00–15:40　第5-6节　信息技术</div>
+              <div class="t2">2025级检验2班 · 实训楼B105 · 2学时</div>
+            </div>
+            <span class="tag wait">待确认</span>
+          </div>
+          <div class="week"><span>本周已确认学时</span><span><b>14</b> 学时</span></div>
+        </div>
+        <div class="tabbar">
+          <div class="tab on"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9 8h-6v10h-6V11H3z"/></svg><span>首页</span></div>
+          <div class="tab off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span>课表</span></div>
+          <div class="tab off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z"/><path d="M8 12h8M8 16h5"/></svg><span>记录</span></div>
+          <div class="tab off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/></svg><span>我的</span></div>
+        </div>
+        <div class="safe"></div>
+      </div>
+    </figure>
+
+    <figure>
+      <figcaption>班干部端 · 出示确认码（60 秒刷新）</figcaption>
+      <div class="phone b">
+        <div class="statusbar"><span>9:41</span><span class="right">●●● WiFi ▮</span></div>
+        <div class="navbar"><span class="nav-title">我的确认码</span>
+          <div class="capsule"><span class="dots">···</span><span class="circle"></span></div>
+        </div>
+        <div class="screen">
+          <div class="codebox">
+            <div class="name">李思琪</div>
+            <div><span class="role">2025级护理3班 · 学委</span></div>
+            <svg class="qr" viewBox="0 0 100 100">
+              <rect width="100" height="100" fill="#fff"/>
+              <g fill="#111">
+                <rect x="5" y="5" width="20" height="20"/><rect x="9" y="9" width="12" height="12" fill="#fff"/><rect x="13" y="13" width="4" height="4"/>
+                <rect x="75" y="5" width="20" height="20"/><rect x="79" y="9" width="12" height="12" fill="#fff"/><rect x="83" y="13" width="4" height="4"/>
+                <rect x="5" y="75" width="20" height="20"/><rect x="9" y="79" width="12" height="12" fill="#fff"/><rect x="13" y="83" width="4" height="4"/>
+                <rect x="30" y="6" width="4" height="4"/><rect x="38" y="6" width="4" height="4"/><rect x="46" y="6" width="4" height="4"/>
+                <rect x="58" y="6" width="4" height="4"/><rect x="66" y="6" width="4" height="4"/>
+                <rect x="30" y="14" width="4" height="4"/><rect x="50" y="14" width="4" height="4"/><rect x="62" y="14" width="4" height="4"/>
+                <rect x="6" y="30" width="4" height="4"/><rect x="14" y="30" width="4" height="4"/><rect x="26" y="30" width="4" height="4"/>
+                <rect x="34" y="30" width="4" height="4"/><rect x="46" y="30" width="4" height="4"/><rect x="58" y="30" width="4" height="4"/>
+                <rect x="70" y="30" width="4" height="4"/><rect x="78" y="30" width="4" height="4"/><rect x="90" y="30" width="4" height="4"/>
+                <rect x="14" y="38" width="4" height="4"/><rect x="30" y="38" width="4" height="4"/><rect x="42" y="38" width="4" height="4"/>
+                <rect x="54" y="38" width="4" height="4"/><rect x="70" y="38" width="4" height="4"/><rect x="86" y="38" width="4" height="4"/>
+                <rect x="6" y="46" width="4" height="4"/><rect x="22" y="46" width="4" height="4"/><rect x="38" y="46" width="4" height="4"/>
+                <rect x="50" y="46" width="4" height="4"/><rect x="66" y="46" width="4" height="4"/><rect x="82" y="46" width="4" height="4"/>
+                <rect x="14" y="54" width="4" height="4"/><rect x="26" y="54" width="4" height="4"/><rect x="46" y="54" width="4" height="4"/>
+                <rect x="58" y="54" width="4" height="4"/><rect x="74" y="54" width="4" height="4"/><rect x="90" y="54" width="4" height="4"/>
+                <rect x="6" y="62" width="4" height="4"/><rect x="18" y="62" width="4" height="4"/><rect x="34" y="62" width="4" height="4"/>
+                <rect x="42" y="62" width="4" height="4"/><rect x="62" y="62" width="4" height="4"/><rect x="78" y="62" width="4" height="4"/>
+                <rect x="30" y="70" width="4" height="4"/><rect x="46" y="70" width="4" height="4"/><rect x="62" y="70" width="4" height="4"/>
+                <rect x="78" y="70" width="4" height="4"/><rect x="90" y="70" width="4" height="4"/>
+                <rect x="30" y="78" width="4" height="4"/><rect x="42" y="78" width="4" height="4"/><rect x="54" y="78" width="4" height="4"/>
+                <rect x="66" y="78" width="4" height="4"/><rect x="82" y="78" width="4" height="4"/>
+                <rect x="34" y="86" width="4" height="4"/><rect x="50" y="86" width="4" height="4"/><rect x="62" y="86" width="4" height="4"/>
+                <rect x="74" y="86" width="4" height="4"/><rect x="86" y="86" width="4" height="4"/>
+                <rect x="42" y="94" width="4" height="4"/><rect x="58" y="94" width="4" height="4"/><rect x="70" y="94" width="4" height="4"/>
+              </g>
+            </svg>
+            <div class="count"><b>58</b> 秒后自动刷新</div>
+          </div>
+          <div class="tip">请任课老师扫描此码发起课时确认。<br>二维码每 60 秒刷新一次，过期自动失效，请勿截图转发。</div>
+          <div class="ghost">手动刷新</div>
+        </div>
+        <div class="tabbar">
+          <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h7v7h-7z"/></svg><span>出示码</span></div>
+          <div class="tab off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z"/><path d="M8 12h8M8 16h5"/></svg><span>待确认</span></div>
+          <div class="tab off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg><span>历史</span></div>
+          <div class="tab off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/></svg><span>我的</span></div>
+        </div>
+        <div class="safe"></div>
+      </div>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ 方案 C ============ -->
+<section class="option">
+  <h2>C · 差异化可落地方向（原生 + 自定义 WXSS）</h2>
+  <div class="badges">
+    <span class="badge">组件来源：<b>原生组件 + 自研样式组件</b></span>
+    <span class="badge">实现难度：<b>中高</b></span>
+    <span class="badge">落地风险：<b>中</b></span>
+    <span class="badge">额外依赖：<b>无第三方库</b></span>
+  </div>
+  <p class="diff">
+    <b>长相：</b>蓝到深蓝渐变头部、本周学时用 38px 大数字顶到眼前、课程卡片带颜色左边条（已确认/待确认一眼分）、按钮用胶囊形。
+    <b>优点：</b>辨识度明显；教师最关心的"我这周多少学时"用最大字号呈现，扫一眼就有数；时间紧、光线差的走廊里也看得清。
+    <b>缺点：</b>渐变与阴影在安卓真机上表现需逐台检查；自定义组件多，后期维护成本高于 A/B；开发工作量比 A 多约 30%。
+    <b>可落地性：</b>所有效果均由 WXSS（linear-gradient、box-shadow、border-radius）与项目内本地图片实现，<b>不使用</b> backdrop-filter、WebGL、SVG 动画或任何 Web 专有特性。
+  </p>
+  <div class="frames">
+    <figure>
+      <figcaption>教师端首页（工作台）· 选中"首页"</figcaption>
+      <div class="phone c">
+        <div class="statusbar"><span>9:41</span><span class="right">●●● WiFi ▮</span></div>
+        <div class="navbar"><span class="nav-title">工作台</span>
+          <div class="capsule"><span class="dots">···</span><span class="circle"></span></div>
+        </div>
+        <div class="screen">
+          <div class="hero">
+            <div class="who">唐瑞明</div>
+            <div class="sub">工号 2010032 · 计算机教研室 · 任课教师</div>
+            <div class="bignum">
+              <span class="v">14</span><span class="u">学时</span>
+              <span class="lbl">本周已确认</span>
+            </div>
+          </div>
+          <div class="stat">
+            <div><div class="num">3</div><div class="lbl">今日课程</div></div>
+            <div><div class="num">1</div><div class="lbl">已确认</div></div>
+            <div><div class="num">2</div><div class="lbl">待确认</div></div>
+          </div>
+          <div class="primary">扫描班干部确认码</div>
+          <div class="sec-title">今日授课</div>
+          <div class="cell">
+            <div class="main">
+              <div class="t1">08:00–09:40　第1-2节　信息技术</div>
+              <div class="t2">2025级护理3班 · 实训楼A302 · 2学时</div>
+            </div>
+            <span class="tag done">已确认</span>
+          </div>
+          <div class="cell pending">
+            <div class="main">
+              <div class="t1">10:05–11:45　第3-4节　信息技术</div>
+              <div class="t2">2025级药学1班 · 实训楼A302 · 2学时</div>
+            </div>
+            <span class="tag wait">待确认</span>
+          </div>
+          <div class="cell pending">
+            <div class="main">
+              <div class="t1">14:00–15:40　第5-6节　信息技术</div>
+              <div class="t2">2025级检验2班 · 实训楼B105 · 2学时</div>
+            </div>
+            <span class="tag wait">待确认</span>
+          </div>
+          <div class="week"><span class="l">本周已确认学时</span><span><b>14</b> 学时</span></div>
+        </div>
+        <div class="tabbar">
+          <div class="tab on"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9 8h-6v10h-6V11H3z"/></svg><span>首页</span></div>
+          <div class="tab off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span>课表</span></div>
+          <div class="tab off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z"/><path d="M8 12h8M8 16h5"/></svg><span>记录</span></div>
+          <div class="tab off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/></svg><span>我的</span></div>
+        </div>
+        <div class="safe"></div>
+      </div>
+    </figure>
+
+    <figure>
+      <figcaption>班干部端 · 出示确认码（60 秒刷新）</figcaption>
+      <div class="phone c">
+        <div class="statusbar"><span>9:41</span><span class="right">●●● WiFi ▮</span></div>
+        <div class="navbar"><span class="nav-title">我的确认码</span>
+          <div class="capsule"><span class="dots">···</span><span class="circle"></span></div>
+        </div>
+        <div class="screen">
+          <div class="codebox">
+            <div class="name">李思琪</div>
+            <div class="role">2025级护理3班 · 学委</div>
+            <svg class="qr" viewBox="0 0 100 100">
+              <rect width="100" height="100" fill="#fff"/>
+              <g fill="#0E3FBF">
+                <rect x="5" y="5" width="20" height="20"/><rect x="9" y="9" width="12" height="12" fill="#fff"/><rect x="13" y="13" width="4" height="4"/>
+                <rect x="75" y="5" width="20" height="20"/><rect x="79" y="9" width="12" height="12" fill="#fff"/><rect x="83" y="13" width="4" height="4"/>
+                <rect x="5" y="75" width="20" height="20"/><rect x="9" y="79" width="12" height="12" fill="#fff"/><rect x="13" y="83" width="4" height="4"/>
+                <rect x="30" y="6" width="4" height="4"/><rect x="38" y="6" width="4" height="4"/><rect x="46" y="6" width="4" height="4"/>
+                <rect x="58" y="6" width="4" height="4"/><rect x="66" y="6" width="4" height="4"/>
+                <rect x="30" y="14" width="4" height="4"/><rect x="50" y="14" width="4" height="4"/><rect x="62" y="14" width="4" height="4"/>
+                <rect x="6" y="30" width="4" height="4"/><rect x="14" y="30" width="4" height="4"/><rect x="26" y="30" width="4" height="4"/>
+                <rect x="34" y="30" width="4" height="4"/><rect x="46" y="30" width="4" height="4"/><rect x="58" y="30" width="4" height="4"/>
+                <rect x="70" y="30" width="4" height="4"/><rect x="78" y="30" width="4" height="4"/><rect x="90" y="30" width="4" height="4"/>
+                <rect x="14" y="38" width="4" height="4"/><rect x="30" y="38" width="4" height="4"/><rect x="42" y="38" width="4" height="4"/>
+                <rect x="54" y="38" width="4" height="4"/><rect x="70" y="38" width="4" height="4"/><rect x="86" y="38" width="4" height="4"/>
+                <rect x="6" y="46" width="4" height="4"/><rect x="22" y="46" width="4" height="4"/><rect x="38" y="46" width="4" height="4"/>
+                <rect x="50" y="46" width="4" height="4"/><rect x="66" y="46" width="4" height="4"/><rect x="82" y="46" width="4" height="4"/>
+                <rect x="14" y="54" width="4" height="4"/><rect x="26" y="54" width="4" height="4"/><rect x="46" y="54" width="4" height="4"/>
+                <rect x="58" y="54" width="4" height="4"/><rect x="74" y="54" width="4" height="4"/><rect x="90" y="54" width="4" height="4"/>
+                <rect x="6" y="62" width="4" height="4"/><rect x="18" y="62" width="4" height="4"/><rect x="34" y="62" width="4" height="4"/>
+                <rect x="42" y="62" width="4" height="4"/><rect x="62" y="62" width="4" height="4"/><rect x="78" y="62" width="4" height="4"/>
+                <rect x="30" y="70" width="4" height="4"/><rect x="46" y="70" width="4" height="4"/><rect x="62" y="70" width="4" height="4"/>
+                <rect x="78" y="70" width="4" height="4"/><rect x="90" y="70" width="4" height="4"/>
+                <rect x="30" y="78" width="4" height="4"/><rect x="42" y="78" width="4" height="4"/><rect x="54" y="78" width="4" height="4"/>
+                <rect x="66" y="78" width="4" height="4"/><rect x="82" y="78" width="4" height="4"/>
+                <rect x="34" y="86" width="4" height="4"/><rect x="50" y="86" width="4" height="4"/><rect x="62" y="86" width="4" height="4"/>
+                <rect x="74" y="86" width="4" height="4"/><rect x="86" y="86" width="4" height="4"/>
+                <rect x="42" y="94" width="4" height="4"/><rect x="58" y="94" width="4" height="4"/><rect x="70" y="94" width="4" height="4"/>
+              </g>
+            </svg>
+            <div class="count"><b>58</b> 秒后自动刷新</div>
+          </div>
+          <div class="tip">请任课老师扫描此码发起课时确认。<br>二维码每 60 秒刷新一次，过期自动失效，请勿截图转发。</div>
+          <div class="ghost">手动刷新</div>
+        </div>
+        <div class="tabbar">
+          <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h7v7h-7z"/></svg><span>出示码</span></div>
+          <div class="tab off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z"/><path d="M8 12h8M8 16h5"/></svg><span>待确认</span></div>
+          <div class="tab off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg><span>历史</span></div>
+          <div class="tab off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/></svg><span>我的</span></div>
+        </div>
+        <div class="safe"></div>
+      </div>
+    </figure>
+  </div>
+</section>
+
+<p class="note">
+说明：三套方案的底部导航图标在 HTML 预览里用内联 SVG 示意，交付到小程序时必须替换为<b>项目内本地 PNG</b>（同时准备 iconPath 与 selectedIconPath）。
+教师端与班干部端导航项不同，原生静态 tabBar 无法按身份切换，三套方案均采用<b>自定义 tabBar</b>（custom-tab-bar 组件），需额外处理选中态同步、页面切换与底部安全区。
+三套方案均预留状态栏与胶囊避让，开发时用 <code>wx.getMenuButtonBoundingClientRect()</code> 动态计算，不硬编码位置。
+</p>
+
+</body>
+</html>
