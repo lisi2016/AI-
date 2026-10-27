@@ -80,11 +80,11 @@ const DEFAULT_SETTINGS = {
 
 const SEED_DEPARTMENTS = [
   {
-    id: 'dept-cs', name: '计算机教研室', headName: '王建国', headEmail: '',
+    id: 'dept-cs', kind: 'teaching', name: '计算机教研室', headName: '王建国', headEmail: '',
     members: [{ name: '王建国' }, { name: '李慧' }, { name: '张明' }, { name: '陈静' }, { name: '刘洋' }],
   },
   {
-    id: 'dept-math', name: '数学教研室', headName: '赵敏', headEmail: '',
+    id: 'dept-math', kind: 'teaching', name: '数学教研室', headName: '赵敏', headEmail: '',
     members: [{ name: '赵敏' }, { name: '孙涛' }, { name: '周雪' }, { name: '吴强' }],
   },
 ];
@@ -116,13 +116,29 @@ function saveSettings(s) {
   saveJson(FILE_SETTINGS, s);
 }
 
+/**
+ * 单元类型只有两种，**具体名称一律由后台自定义，代码不写死任何岗位名**：
+ *  - teaching：教研室，成员为教师，负责人称「教研室主任」
+ *  - post：部门直属岗位（综合专干岗、教务专干等任意名称），不隶属教研室，归「部门负责人」管辖
+ */
+const UNIT_KIND_POST = 'post';
+function unitKind(u) { return u && u.kind === UNIT_KIND_POST ? UNIT_KIND_POST : 'teaching'; }
+function isPostUnit(u) { return unitKind(u) === UNIT_KIND_POST; }
+/** 类型称谓：教研室 / 部门直属岗位（仅用于表单与提示，不含具体名称） */
+function unitTypeLabel(u) { return isPostUnit(u) ? '部门直属岗位' : '教研室'; }
+/** 单元负责人称谓：教研室主任 / 部门负责人 */
+function unitHeadLabel(u) { return isPostUnit(u) ? '部门负责人' : '教研室主任'; }
+/** 单元成员称谓：教师 / 工作人员 */
+function unitStaffLabel(u) { return isPostUnit(u) ? '工作人员' : '教师'; }
+
 function getDepartments() {
   const d = loadJson(FILE_DEPARTMENTS, null);
   if (!d) {
     saveJson(FILE_DEPARTMENTS, SEED_DEPARTMENTS);
     return JSON.parse(JSON.stringify(SEED_DEPARTMENTS));
   }
-  return d;
+  // 迁移兜底：历史数据没有 kind 字段，一律视为教研室
+  return d.map((x) => Object.assign({}, x, { kind: unitKind(x) }));
 }
 
 function saveDepartments(d) {
@@ -202,16 +218,58 @@ function checkAuth(req, res) {
 
 /* ---------------- 大模型汇总 ---------------- */
 
+/**
+ * 尝试修复被截断的 JSON：丢掉不完整的尾部片段，补齐未闭合的字符串与括号。
+ * 仅作尽力而为的兜底，修复失败时上层会走"提高上限重试"。
+ */
+function repairTruncatedJson(text) {
+  const s = String(text || '');
+  const stack = [];
+  let inStr = false;
+  let esc = false;
+  let cut = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (inStr) {
+      if (esc) { esc = false; continue; }
+      if (c === '\\') { esc = true; continue; }
+      if (c === '"') { inStr = false; cut = i + 1; }
+      continue;
+    }
+    if (c === '"') { inStr = true; continue; }
+    if (c === '{' || c === '[') { stack.push(c === '{' ? '}' : ']'); continue; }
+    if (c === '}' || c === ']') { if (stack.length) stack.pop(); cut = i + 1; continue; }
+    if (c === ',' || c === ':' || c === ' ' || c === '\n' || c === '\r' || c === '\t') continue;
+    cut = i + 1;
+  }
+  let body = s.slice(0, cut).replace(/[,:\s]+$/, '');
+  if (inStr && !body.endsWith('"')) body += '"';
+  body = body.replace(/"[^"]*"\s*:\s*$/, '');
+  while (stack.length) body += stack.pop();
+  body = body.replace(/,([}\]])/g, '$1');
+  if (body === s) return null;
+  try {
+    JSON.parse(body);
+    return body;
+  } catch (e) {
+    return null;
+  }
+}
+
 async function callLLM(settings, systemPrompt, userContent, opts = {}) {
   const json = opts.json !== false;
   const { baseUrl, apiKey, model, temperature } = settings.llm;
   if (!apiKey) throw new Error('未配置 LLM API Key，请在设置页配置');
   const url = (baseUrl || 'https://api.deepseek.com').replace(/\/+$/, '') + '/chat/completions';
+  // 显式给出 max_tokens：不设时服务端默认值偏小，长文汇总极易被截断（JSON 解析失败→降级）
+  const maxTokens = Number(opts.maxTokens) || (json ? 4096 : 512);
+  const systemPromptFinal = opts.extraHint ? systemPrompt + opts.extraHint : systemPrompt;
   const payload = {
     model: model || 'deepseek-chat',
     temperature: Number(temperature) || 0.6,
+    max_tokens: maxTokens,
     messages: [
-      { role: 'system', content: systemPrompt },
+      { role: 'system', content: systemPromptFinal },
       { role: 'user', content: userContent },
     ],
     stream: false,
@@ -230,17 +288,41 @@ async function callLLM(settings, systemPrompt, userContent, opts = {}) {
     throw new Error(`LLM 请求失败（HTTP ${res.status}）：${text.slice(0, 400)}`);
   }
   const data = await res.json();
-  const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+  const choice = data.choices && data.choices[0];
+  const content = choice && choice.message && choice.message.content;
   if (!content) throw new Error('LLM 返回内容为空');
   const cleaned = content.replace(/^```(?:json)?\s*/m, '').replace(/\s*```$/m, '').trim();
   if (!json) return cleaned;
-  let parsed;
+
+  const truncated = choice.finish_reason === 'length';
   try {
-    parsed = JSON.parse(cleaned);
+    return JSON.parse(cleaned);
   } catch (e) {
+    // ① 先尝试补全被截断的 JSON 结构
+    const fixed = repairTruncatedJson(cleaned);
+    if (fixed) {
+      try {
+        const parsed = JSON.parse(fixed);
+        console.warn('[LLM] 输出不完整（finish_reason=' + choice.finish_reason + '），已自动补全 JSON 后解析成功');
+        return parsed;
+      } catch (e2) { /* 修复无效，继续 */ }
+    }
+    // ② 再尝试提高 max_tokens 重试一次（仅一次，避免死循环）
+    const nextTokens = Math.min(maxTokens * 2, 8192);
+    if (!opts._noRetry && nextTokens > maxTokens) {
+      console.warn('[LLM] 输出疑似被截断（finish_reason=' + choice.finish_reason + '），提高 max_tokens 至 ' + nextTokens + ' 重试一次');
+      try {
+        return await callLLM(settings, systemPrompt, userContent, Object.assign({}, opts, {
+          maxTokens: nextTokens,
+          _noRetry: true,
+          extraHint: '\n\n【重要】上一次输出因超长被截断，导致 JSON 不完整。请压缩篇幅（每个小节不超过 200 字），务必输出完整闭合的 JSON。',
+        }));
+      } catch (retryErr) {
+        console.warn('[LLM] 重试仍失败：' + retryErr.message);
+      }
+    }
     throw new Error('LLM 返回内容不是合法 JSON：' + cleaned.slice(0, 300));
   }
-  return parsed;
 }
 
 function normalizeResult(result) {
@@ -315,8 +397,10 @@ async function aggregate(department, month, subs) {
             `【成员${i + 1}】姓名：${s.memberName}\n本月工作总结：\n${s.summary}\n下月工作计划：\n${s.plan}`
         )
         .join('\n\n');
-      const userContent = `部门：${department.name}\n汇总月份（工作总结所属月）：${fmtMonthLabel(month)}\n计划月份（工作计划所属月，即下月）：${fmtMonthLabel(nextMonth(month))}\n\n以下是该教研室 ${subs.length} 名成员提交的原始《本月工作总结》与《下月工作计划》：\n\n${memberBlock}`;
-      const systemPrompt = `你是一名教研室主任，负责撰写本教研室的月度工作总结与工作计划。请以教研室主任的口吻，根据教研室成员提交的原始月度工作总结与工作计划，撰写一份高质量、正式规范的《月度工作总结及下月工作计划》。
+      const head = unitHeadLabel(department);
+      const unitName = department.name;
+      const userContent = `单位：${unitName}\n汇总月份（工作总结所属月）：${fmtMonthLabel(month)}\n计划月份（工作计划所属月，即下月）：${fmtMonthLabel(nextMonth(month))}\n\n以下是${unitName} ${subs.length} 名成员提交的原始《本月工作总结》与《下月工作计划》：\n\n${memberBlock}`;
+      const systemPrompt = `你是一名${head}，负责撰写${unitName}的月度工作总结与工作计划。请以${head}的口吻，根据${unitName}成员提交的原始月度工作总结与工作计划，撰写一份高质量、正式规范的《月度工作总结及下月工作计划》。
 
 【文档结构】内容分两大部分：
 - 本月工作总结（对应 ${fmtMonthLabel(month)}）
@@ -329,7 +413,8 @@ async function aggregate(department, month, subs) {
    - 正文：成段叙述（200-350字），按"做了什么——怎么做的——取得什么成效"展开，语言正式、通顺、有公文质感；
 3. 严禁逐人罗列、严禁流水账，严禁"1.张三完成……；2.李四完成……"式清单；不点名、不归属个人；
 4. 对成员内容归纳提炼、同类合并，重要事项不得遗漏，可合理汇总量化信息（如"三名教师申报课题全部获批立项"）；
-5. 如存在明显问题或不足，可在工作总结部分增设小节"存在的问题与不足"；如需改进安排可增设"下一步改进方向"；
+5. **不要写「存在的问题与不足」「下一步改进方向」这类内容**（正式模板不含此部分），只写已完成的工作与下一步安排；
+6. 小节标题只写动宾式短语，**不要带任何序号**（系统会自动加上"(一)(二)"），也不要带标点结尾；
 6. 【严禁编造】不得虚构、夸大原始内容中不存在的事实、数据与数字。原始材料中没有具体数量时，用定性表述（如"多位教师""相关工作"），**切勿自行添加数字**；没有的内容不写，宁可简洁也不要凭空发挥。
 
 严格按以下 JSON 输出（不要输出任何其他文字或 markdown）：
@@ -480,8 +565,11 @@ function triggerPersonalDocAfterSubmit(departmentId, month, memberName) {
       const g = await generatePersonalDocInternal(dept, name, m);
       if (!g.ok) return;
       const settings = getSettings();
-      if (!settings.auto.collegeEmail || !settings.smtp.host || !settings.smtp.user) {
-        console.log(`[个人文档] ${dept.name} ${name} ${m} 已生成（未配置邮箱，未自动发送）`);
+      const mailReady = (settings.mailer && settings.mailer.method === 'agently')
+        ? !!getAgentlyCliPath()
+        : !!(settings.smtp.host && settings.smtp.user);
+      if (!settings.auto.collegeEmail || !mailReady) {
+        console.log(`[个人文档] ${dept.name} ${name} ${m} 已生成（未配置可用的发信通道，未自动发送）`);
         return;
       }
       const s = await sendPersonalDocInternal(dept, name, m, g.file);
@@ -521,47 +609,189 @@ function startAutoScheduler() {
   setInterval(run, 60000);
 }
 
+/* ---------------- 邮箱服务健康检查 ---------------- */
+
+const FILE_MAIL_CHECKS = path.join(DATA_DIR, 'mail-checks.json');
+const MAIL_CHECK_DAY = 23;   // 每月 23 号例行检查
+const MAIL_CHECK_HOUR = 9;   // 当天 09:00 之后执行
+const MAIL_ALERT_MIN_GAP = 24 * 60 * 60 * 1000; // 告警邮件最短间隔
+
+function getMailChecks() {
+  const v = loadJson(FILE_MAIL_CHECKS, null) || {};
+  return {
+    last: v.last || null,
+    lastAutoMonth: v.lastAutoMonth || '',
+    lastAlertAt: v.lastAlertAt || '',
+    history: Array.isArray(v.history) ? v.history : [],
+  };
+}
+
+function saveMailChecks(v) {
+  v.history = (v.history || []).slice(-60);
+  saveJson(FILE_MAIL_CHECKS, v);
+}
+
+/** 探测单个发信通道：只做只读握手/查身份，不发送任何邮件 */
+async function probeMailChannel(settings, channel) {
+  const t0 = Date.now();
+  try {
+    if (channel === 'agently') {
+      const out = await execAgently(['+me']);
+      let info = null;
+      try { info = JSON.parse(out); } catch (e) { info = null; }
+      if (info && info.ok === false) {
+        throw new Error((info.error && info.error.message) || 'agently-cli 返回失败');
+      }
+      const alias = info && info.data && info.data.aliases && info.data.aliases[0];
+      return { channel, ok: true, detail: alias && alias.email ? '已授权：' + alias.email : 'Agently 可用', ms: Date.now() - t0 };
+    }
+    if (!settings.smtp.host || !settings.smtp.user || !settings.smtp.pass) {
+      return { channel, ok: false, detail: '未配置 SMTP（缺少服务器/账号/授权码）', ms: Date.now() - t0 };
+    }
+    const transporter = createTransporter(settings);
+    await transporter.verify();
+    return { channel, ok: true, detail: 'SMTP 握手成功：' + settings.smtp.user, ms: Date.now() - t0 };
+  } catch (e) {
+    return { channel, ok: false, detail: String((e && e.message) || e).slice(0, 300), ms: Date.now() - t0 };
+  }
+}
+
+/**
+ * 检查邮箱服务：主通道（设置页所选发信方式）+ 兜底通道。
+ * 主通道故障但兜底可用时，仍判定「可发信」（系统本身有自动回退），但会在 detail 里写明降级原因。
+ */
+async function checkMailService(source) {
+  const settings = getSettings();
+  const primary = settings.mailer && settings.mailer.method === 'smtp' ? 'smtp' : 'agently';
+  const other = primary === 'agently' ? 'smtp' : 'agently';
+  const main = await probeMailChannel(settings, primary);
+  const backup = await probeMailChannel(settings, other);
+  const sendable = !!(main.ok || backup.ok);
+  let detail = main.detail;
+  if (!main.ok && backup.ok) detail = '主通道 ' + primary + ' 故障（' + main.detail + '），已可回退 ' + other;
+  const record = {
+    at: new Date().toISOString(),
+    source: source || 'manual',
+    method: primary,
+    ok: !!main.ok,
+    sendable,
+    detail,
+    channels: [main, backup],
+  };
+  const state = getMailChecks();
+  state.last = record;
+  state.history.push(record);
+  // 仅在「完全发不出邮件」时告警，避免噪声；同一问题 24 小时内不重复告警
+  const needAlert = !sendable && !!settings.auto.collegeEmail;
+  const lastAlert = state.lastAlertAt ? new Date(state.lastAlertAt).getTime() : 0;
+  if (needAlert && Date.now() - lastAlert > MAIL_ALERT_MIN_GAP) {
+    const body = [
+      '系统在例行邮箱服务检查中发现：当前所有发信通道均不可用，月度汇总邮件将无法送达。',
+      '',
+      '检查时间：' + record.at,
+      '主通道：' + primary + ' —— ' + main.detail,
+      '兜底通道：' + other + ' —— ' + backup.detail,
+      '',
+      '请尽快处理（如重新授权 Agently，或在设置页核对 SMTP 授权码）。',
+      '',
+      '—— 月度工作总结与计划生成系统（自动检查）',
+    ].join('\n');
+    try {
+      await sendMail(settings, settings.auto.collegeEmail, '【告警】邮箱服务不可用，月度汇总无法发送', body, []);
+      state.lastAlertAt = new Date().toISOString();
+      record.alerted = true;
+    } catch (e) {
+      record.alertError = String((e && e.message) || e).slice(0, 300);
+    }
+  }
+  saveMailChecks(state);
+  const tag = sendable ? (record.ok ? '正常' : '降级可用') : '不可用';
+  console.log('[' + record.at + '] [邮箱检查/' + record.source + '] ' + tag + ' —— ' + detail);
+  if (record.alertError) console.error('[邮箱检查] 告警邮件发送失败：' + record.alertError);
+  return record;
+}
+
+/**
+ * 每月 23 号例行检查一次。
+ * 为防服务当天停机漏检：当天 > 23 号且本月尚未检查过时，启动后会补检一次。
+ */
+function startMailCheckScheduler() {
+  const runIfDue = async () => {
+    try {
+      const now = new Date();
+      const monthKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+      const state = getMailChecks();
+      if (state.lastAutoMonth === monthKey) return;
+      const day = now.getDate();
+      const due = day > MAIL_CHECK_DAY || (day === MAIL_CHECK_DAY && now.getHours() >= MAIL_CHECK_HOUR);
+      if (!due) return;
+      state.lastAutoMonth = monthKey; // 先占位，避免并发重入重复检查
+      saveMailChecks(state);
+      console.log('[邮箱检查] ' + monthKey + ' 例行检查开始（每月 ' + MAIL_CHECK_DAY + ' 号）');
+      await checkMailService('scheduled');
+    } catch (e) {
+      console.error('[邮箱检查定时任务异常] ' + e.message);
+    }
+  };
+  setTimeout(runIfDue, 12000);
+  setInterval(runIfDue, 30 * 60 * 1000);
+}
+
 /* ---------------- Word 文档生成 ---------------- */
 
-const FONT_SONG = { ascii: 'Times New Roman', hAnsi: 'Times New Roman', eastAsia: '宋体' };
+/* 版式常量：严格对照模板《计算机教研室九月份工作总结及十月份工作计划.docx》 */
+const FONT_TITLE = { ascii: '方正仿宋_GB2312', hAnsi: '方正仿宋_GB2312', eastAsia: '方正仿宋_GB2312' };
 const FONT_HEI = { ascii: 'Times New Roman', hAnsi: 'Times New Roman', eastAsia: '黑体' };
+const FONT_FANGSONG = { ascii: 'Times New Roman', hAnsi: 'Times New Roman', eastAsia: '仿宋_GB2312' };
+const FONT_SONG = FONT_FANGSONG; // 旧引用统一到仿宋正文
 
+/* 模板行距均为「固定值」，twips = pt × 20 */
+const LS_TITLE = 720; // 36pt
+const LS_HEAD = 600;  // 30pt
+const LS_BODY = 560;  // 28pt
+
+/** 文档标题：方正仿宋_GB2312 22pt 加粗居中 */
 function titlePara(text) {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
-    spacing: { after: 120, line: 400, lineRule: LineRuleType.AUTO },
-    children: [new TextRun({ text, font: FONT_HEI, size: 32, bold: true })],
+    spacing: { before: 240, after: 480, line: LS_TITLE, lineRule: LineRuleType.EXACT },
+    children: [new TextRun({ text, font: FONT_TITLE, size: 44, bold: true })],
   });
 }
 
 function metaPara(text) {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
-    spacing: { after: 240, line: 360, lineRule: LineRuleType.AUTO },
-    children: [new TextRun({ text, font: FONT_SONG, size: 21 })],
+    spacing: { after: 240, line: LS_BODY, lineRule: LineRuleType.EXACT },
+    children: [new TextRun({ text, font: FONT_FANGSONG, size: 32 })],
   });
 }
 
+/** 一级标题「一、二、」：黑体 16pt，不加粗 */
 function headingPara(text) {
   return new Paragraph({
-    spacing: { before: 200, after: 120, line: 360, lineRule: LineRuleType.AUTO },
-    children: [new TextRun({ text, font: FONT_HEI, size: 28, bold: true })],
+    alignment: AlignmentType.LEFT,
+    spacing: { before: 360, after: 240, line: LS_HEAD, lineRule: LineRuleType.EXACT },
+    children: [new TextRun({ text, font: FONT_HEI, size: 32 })],
   });
 }
 
+/** 正文：仿宋_GB2312 16pt，两端对齐，首行缩进 2 字，固定行距 28pt */
 function bodyPara(text, bold = false) {
   return new Paragraph({
-    indent: { firstLine: 480 },
-    spacing: { line: 360, lineRule: LineRuleType.AUTO },
-    children: [new TextRun({ text, font: FONT_SONG, size: 24, bold })],
+    alignment: AlignmentType.JUSTIFY,
+    indent: { firstLine: 640 },
+    spacing: { before: 0, after: 0, line: LS_BODY, lineRule: LineRuleType.EXACT },
+    children: [new TextRun({ text, font: FONT_FANGSONG, size: 32, bold })],
   });
 }
 
 function itemPara(text) {
   return new Paragraph({
-    indent: { firstLine: 480 },
-    spacing: { line: 360, lineRule: LineRuleType.AUTO },
-    children: [new TextRun({ text, font: FONT_SONG, size: 24 })],
+    alignment: AlignmentType.JUSTIFY,
+    indent: { firstLine: 640 },
+    spacing: { before: 0, after: 0, line: LS_BODY, lineRule: LineRuleType.EXACT },
+    children: [new TextRun({ text, font: FONT_FANGSONG, size: 32 })],
   });
 }
 
@@ -572,10 +802,12 @@ function listPara(texts) {
   return out;
 }
 
+/** 二级标题「(一)(二)」：黑体 15pt，不加粗 */
 function subheadingPara(text) {
   return new Paragraph({
-    spacing: { before: 120, after: 60, line: 360, lineRule: LineRuleType.AUTO },
-    children: [new TextRun({ text, font: FONT_HEI, size: 24, bold: true })],
+    alignment: AlignmentType.LEFT,
+    spacing: { before: 120, after: 120, line: LS_HEAD, lineRule: LineRuleType.EXACT },
+    children: [new TextRun({ text, font: FONT_HEI, size: 30 })],
   });
 }
 
@@ -595,8 +827,12 @@ function cnYear(y) { return String(y).split('').map((d) => CN_DIGITS[Number(d)])
 /** 7 -> 七；11 -> 十一；12 -> 十二 */
 function cnMonth(m) {
   const n = Number(m);
-  if (n <= 10) return CN_DIGITS[n];
-  return '十' + CN_DIGITS[n - 10];
+  // 注意：CN_DIGITS 只有 0-9，10/11/12 必须单独处理（否则 cnMonth(10) 会返回 undefined）
+  if (n >= 1 && n <= 9) return CN_DIGITS[n];
+  if (n === 10) return '十';
+  if (n === 11) return '十一';
+  if (n === 12) return '十二';
+  return String(m);
 }
 
 function buildDocx(type, data) {
@@ -663,19 +899,19 @@ function wrapDocument(children) {
   return new Document({
     styles: {
       default: {
-        document: { run: { font: FONT_SONG, size: 24 } },
+        document: { run: { font: FONT_FANGSONG, size: 32 } },
       },
     },
     sections: [
       {
         properties: {
           page: {
-            size: { width: convertMillimetersToTwip(210), height: convertMillimetersToTwip(297) },
+            size: { width: convertMillimetersToTwip(215.9), height: convertMillimetersToTwip(279.4) },
             margin: {
               top: convertMillimetersToTwip(37),
-              bottom: convertMillimetersToTwip(35),
+              bottom: convertMillimetersToTwip(37),
               left: convertMillimetersToTwip(28),
-              right: convertMillimetersToTwip(26),
+              right: convertMillimetersToTwip(28),
             },
           },
         },
@@ -690,14 +926,15 @@ async function writeCombinedReportDocx(dept, month, aggregateResult) {
   const { year, num } = splitMonth(month);
   const pm = splitMonth(nextMonth(month));
   const data = {
-    title: `${dept.name}${year}年${num}月工作总结及${pm.year}年${pm.num}月工作计划`,
+    title: `${dept.name}${cnMonth(num)}月份工作总结及${cnMonth(pm.num)}月份工作计划`,
     deptName: dept.name,
     generatedDate: fmtDate(),
-    summaryTitle: `${year}年${num}月工作总结`,
-    planTitle: `${pm.year}年${pm.num}月工作计划`,
+    summaryTitle: `${cnMonth(num)}月份工作总结`,
+    planTitle: `${cnMonth(pm.num)}月份工作计划`,
     summary: aggregateResult.summary,
     plan: aggregateResult.plan,
-    signDate: `${cnYear(year)}年${cnMonth(num)}月`,
+    // 落款月份取「计划所属月」（与模板一致：九月总结/十月计划 → 落款十月）
+    signDate: `${cnYear(pm.year)}年${cnMonth(pm.num)}月`,
   };
   const doc = buildCombinedDocx(data);
   const buffer = await Packer.toBuffer(doc);
@@ -710,13 +947,12 @@ async function writeCombinedReportDocx(dept, month, aggregateResult) {
 function buildCombinedDocx(data) {
   const children = [];
   children.push(titlePara(data.title));
-  children.push(metaPara(`（${data.deptName}　生成日期：${data.generatedDate}）`));
 
   children.push(headingPara(`一、${data.summaryTitle}`));
   const sumSections = (data.summary && data.summary.sections) || [];
   if (!sumSections.length) children.push(bodyPara('（无）'));
   sumSections.forEach((s, i) => {
-    children.push(subheadingPara(`（${CN_NUM[i] || i + 1}）${s.title}`));
+    children.push(subheadingPara(`(${CN_NUM[i] || i + 1})${s.title}`));
     contentParas(s.content).forEach((p) => children.push(p));
   });
 
@@ -724,13 +960,18 @@ function buildCombinedDocx(data) {
   const planSections = (data.plan && data.plan.sections) || [];
   if (!planSections.length) children.push(bodyPara('（无）'));
   planSections.forEach((s, i) => {
-    children.push(subheadingPara(`（${CN_NUM[i] || i + 1}）${s.title}`));
+    children.push(subheadingPara(`(${CN_NUM[i] || i + 1})${s.title}`));
     contentParas(s.content).forEach((p) => children.push(p));
   });
 
-  // 落款
-  children.push(new Paragraph({ spacing: { before: 400 }, alignment: AlignmentType.RIGHT, children: [new TextRun({ text: data.deptName, font: FONT_SONG, size: 24 })] }));
-  children.push(new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: data.signDate, font: FONT_SONG, size: 24 })] }));
+  // 落款（模板：右对齐两行 —— 单位名称 / 中文年月）
+  const signPara = (text) => new Paragraph({
+    alignment: AlignmentType.RIGHT,
+    spacing: { before: 0, after: 0, line: LS_BODY, lineRule: LineRuleType.EXACT },
+    children: [new TextRun({ text, font: FONT_FANGSONG, size: 32 })],
+  });
+  children.push(signPara(data.deptName));
+  children.push(signPara(data.signDate));
   return wrapDocument(children);
 }
 
@@ -843,18 +1084,32 @@ async function sendViaSmtp(settings, to, subject, body, files, cc) {
  * 保证邮件一定发得出去，不会因为一种通道失效导致报表发不出去。
  */
 async function sendMail(settings, to, subject, body, files, cc) {
-  if (settings.mailer.method === 'agently') {
+  const method = settings.mailer && settings.mailer.method === 'smtp' ? 'smtp' : 'agently';
+  const smtpReady = !!(settings.smtp && settings.smtp.host && settings.smtp.user && settings.smtp.pass);
+  const agentlyCli = getAgentlyCliPath();
+  const agentlyReady = !!(agentlyCli && fs.existsSync(agentlyCli));
+
+  if (method === 'agently') {
     try {
       return await sendViaAgently(to, subject, body, files);
     } catch (e) {
-      const smtpReady = !!(settings.smtp && settings.smtp.host && settings.smtp.user && settings.smtp.pass);
       if (!smtpReady) throw e;
       console.warn('[邮件] Agently 发送失败，自动改用 SMTP 通道：' + e.message);
       const info = await sendViaSmtp(settings, to, subject, body, files, cc);
-      return { ok: true, viaFallback: 'smtp', agentlyError: e.message, messageId: info && info.messageId };
+      return { ok: true, viaFallback: 'smtp', firstError: e.message, messageId: info && info.messageId };
     }
   }
-  return await sendViaSmtp(settings, to, subject, body, files, cc);
+
+  // 主通道 SMTP 失败时同样回退 Agently —— 两条通道互为备份，避免"只靠一条命"
+  // 注意：Agently 通道不支持抄送，回退时 cc 会丢失（仅影响"抄送主任"，不影响主送）
+  try {
+    return await sendViaSmtp(settings, to, subject, body, files, cc);
+  } catch (e) {
+    if (!agentlyReady) throw e;
+    console.warn('[邮件] SMTP 发送失败，自动改用 Agently 通道：' + e.message);
+    const out = await sendViaAgently(to, subject, body, files);
+    return Object.assign({ ok: true }, out, { viaFallback: 'agently', firstError: e.message, ccDropped: cc ? true : undefined });
+  }
 }
 
 async function sendReportMail(settings, dept, month, count, files, to, cc) {
@@ -889,7 +1144,7 @@ app.get('/settings.html', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'sett
 /* 引导数据（无需登录） */
 app.get('/api/bootstrap', (req, res) => {
   const departments = getDepartments().map((d) => ({
-    id: d.id, name: d.name, headName: d.headName, headEmail: d.headEmail, members: d.members || [],
+    id: d.id, kind: unitKind(d), name: d.name, headName: d.headName, headEmail: d.headEmail, members: d.members || [],
   }));
   const subs = getSubmissions();
   const months = [...new Set(subs.map((s) => s.month))].sort().reverse();
@@ -914,13 +1169,13 @@ app.post('/api/submit', (req, res) => {
   const { departmentId, memberName, summary, plan, month } = req.body || {};
   const m = safeMonth(month);
   if (!m) return res.status(400).json({ ok: false, error: '月份格式不正确' });
-  if (!departmentId) return res.status(400).json({ ok: false, error: '请选择教研室' });
+  if (!departmentId) return res.status(400).json({ ok: false, error: '请选择教研室或岗位' });
   const name = String(memberName || '').trim();
   if (!name) return res.status(400).json({ ok: false, error: '请选择姓名' });
   if (!String(summary || '').trim()) return res.status(400).json({ ok: false, error: '请填写本月工作总结' });
   if (!String(plan || '').trim()) return res.status(400).json({ ok: false, error: '请填写下月工作计划' });
   const dept = getDepartments().find((d) => d.id === departmentId);
-  if (!dept) return res.status(400).json({ ok: false, error: '教研室不存在' });
+  if (!dept) return res.status(400).json({ ok: false, error: '所选教研室/岗位不存在' });
 
   const subs = getSubmissions();
   const idx = subs.findIndex((s) => s.departmentId === departmentId && s.memberName === name && s.month === m);
@@ -993,7 +1248,7 @@ app.post('/api/generate', async (req, res) => {
   const m = safeMonth(month);
   if (!m || !departmentId) return res.status(400).json({ ok: false, error: '参数不完整' });
   const dept = getDepartments().find((d) => d.id === departmentId);
-  if (!dept) return res.status(400).json({ ok: false, error: '教研室不存在' });
+  if (!dept) return res.status(400).json({ ok: false, error: '所选教研室/岗位不存在' });
   const subs = getSubmissions().filter((s) => s.month === m && s.departmentId === departmentId);
   if (!subs.length) return res.status(400).json({ ok: false, error: '该教研室本月暂无成员提交内容，请先让成员提交' });
 
@@ -1050,7 +1305,7 @@ app.get('/api/download', (req, res) => {
   }
   if (!file || !fs.existsSync(file)) return res.status(404).json({ ok: false, error: '文档不存在，请先重新生成' });
   const dept = getDepartments().find((d) => d.id === departmentId);
-  if (!dept) return res.status(400).json({ ok: false, error: '教研室不存在' });
+  if (!dept) return res.status(400).json({ ok: false, error: '所选教研室/岗位不存在' });
   const { year, num } = splitMonth(month);
   const pm = splitMonth(nextMonth(month));
   let displayName;
@@ -1073,7 +1328,7 @@ app.post('/api/send', async (req, res) => {
   const m = safeMonth(month);
   if (!m || !departmentId) return res.status(400).json({ ok: false, error: '参数不完整' });
   const dept = getDepartments().find((d) => d.id === departmentId);
-  if (!dept) return res.status(400).json({ ok: false, error: '教研室不存在' });
+  if (!dept) return res.status(400).json({ ok: false, error: '所选教研室/岗位不存在' });
   const reports = getReports();
   const key = reportKey(m, departmentId);
   const r = reports[key];
@@ -1201,6 +1456,7 @@ app.put('/api/departments', (req, res) => {
   if (!Array.isArray(list)) return res.status(400).json({ ok: false, error: '数据格式错误' });
   const cleaned = list.map((d) => ({
     id: String(d.id || crypto.randomBytes(6).toString('hex')),
+    kind: d.kind === UNIT_KIND_POST ? UNIT_KIND_POST : 'teaching',
     name: String(d.name || '').trim(),
     headName: String(d.headName || '').trim(),
     headEmail: String(d.headEmail || '').trim(),
@@ -1209,7 +1465,31 @@ app.put('/api/departments', (req, res) => {
       : [],
   })).filter((d) => d.name);
   saveDepartments(cleaned);
-  res.json({ ok: true, message: '教研室信息已保存' });
+  res.json({ ok: true, message: '教研室与岗位信息已保存' });
+});
+
+/* 邮箱服务健康检查：查看最近结果与历史（管理员） */
+app.get('/api/mail-check', (req, res) => {
+  if (!checkAuth(req, res)) return;
+  const state = getMailChecks();
+  res.json({
+    ok: true,
+    last: state.last,
+    lastAutoMonth: state.lastAutoMonth,
+    history: state.history.slice(-10),
+    schedule: { day: MAIL_CHECK_DAY, hour: MAIL_CHECK_HOUR },
+  });
+});
+
+/* 立即检查一次邮箱服务（管理员） */
+app.post('/api/mail-check', async (req, res) => {
+  if (!checkAuth(req, res)) return;
+  try {
+    const result = await checkMailService('manual');
+    res.json({ ok: true, result });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String((e && e.message) || e) });
+  }
 });
 
 /* 测试 SMTP（用表单中填写的配置，未保存也可测试） */
@@ -1283,13 +1563,13 @@ async function polishPersonal(department, memberName, month, summary, plan) {
   const arr = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string' && x.trim()).map((x) => x.trim()) : []);
   if (settings.llm.enabled && settings.llm.apiKey) {
     try {
-      const systemPrompt = `你是一名教研室主任，正在协助本教研室教师整理个人月度总结。请以专业的公文口吻，将该教师的原始月度工作总结与工作计划进行润色优化，使其语言通顺、条理清晰、正式规范，形成一份"漂亮的"个人月度总结与计划。
+      const systemPrompt = `你是一名${unitHeadLabel(department)}，正在协助${department.name}的${unitStaffLabel(department)}整理个人月度总结。请以专业的公文口吻，将该人员的原始月度工作总结与工作计划进行润色优化，使其语言通顺、条理清晰、正式规范，形成一份"漂亮的"个人月度总结与计划。
 
 要求：
 1. 保留原始内容的全部要点，不得增删事实、不得编造、不得遗漏；
 2. 将口语化、零散的表述润色为规范的公文语言，适当合并重复内容；
 3. 【严禁编造】不得虚构、夸大原始内容中不存在的事实、数据与数字；原始内容没有具体数量时用定性表述（如"多次""相关工作"），切勿自行添加数字；没有的内容不写；
-4. 输出结构：本月工作总结（成段）、工作亮点（1-3条）、问题与不足（1-3条）、下月工作计划（成段）。
+4. 输出结构：本月工作总结（成段）、工作亮点（1-3条）、下月工作计划（成段）。不要写"问题与不足"。
 
 严格按以下 JSON 输出（不要输出任何其他文字或 markdown）：
 {
@@ -1298,7 +1578,7 @@ async function polishPersonal(department, memberName, month, summary, plan) {
   "problems": ["不足1", "不足2"],
   "plan": "润色后的成段下月工作计划，150-300字"
 }`;
-      const userContent = `姓名：${memberName}\n教研室：${department.name}\n总结月份（本月）：${fmtMonthLabel(month)}\n计划月份（下月）：${fmtMonthLabel(nextMonth(month))}\n\n【原始本月工作总结】\n${summary}\n\n【原始下月工作计划】\n${plan}`;
+      const userContent = `姓名：${memberName}\n所属${unitTypeLabel(department)}：${department.name}\n总结月份（本月）：${fmtMonthLabel(month)}\n计划月份（下月）：${fmtMonthLabel(nextMonth(month))}\n\n【原始本月工作总结】\n${summary}\n\n【原始下月工作计划】\n${plan}`;
       const raw = await callLLM(settings, systemPrompt, userContent);
       return {
         usedLlm: true,
@@ -1327,9 +1607,7 @@ function buildPersonalDocx(data) {
   contentParas(data.summary).forEach((p) => children.push(p));
   children.push(headingPara('二、工作亮点'));
   listPara(data.highlights).forEach((p) => children.push(p));
-  children.push(headingPara('三、存在的问题与不足'));
-  listPara(data.problems).forEach((p) => children.push(p));
-  children.push(headingPara('四、下月工作计划'));
+  children.push(headingPara('三、下月工作计划'));
   contentParas(data.plan).forEach((p) => children.push(p));
   return wrapDocument(children);
 }
@@ -1410,7 +1688,7 @@ app.post('/api/my-doc/generate', async (req, res) => {
   const name = String(memberName || '').trim();
   if (!m || !departmentId || !name) return res.status(400).json({ ok: false, error: '参数不完整' });
   const dept = getDepartments().find((d) => d.id === departmentId);
-  if (!dept) return res.status(400).json({ ok: false, error: '教研室不存在' });
+  if (!dept) return res.status(400).json({ ok: false, error: '所选教研室/岗位不存在' });
   try {
     const r = await generatePersonalDocInternal(dept, name, m);
     if (!r.ok) return res.status(400).json({ ok: false, error: r.error });
@@ -1471,7 +1749,7 @@ app.post('/api/my-doc/send', async (req, res) => {
   const name = String(memberName || '').trim();
   if (!m || !departmentId || !name) return res.status(400).json({ ok: false, error: '参数不完整' });
   const dept = getDepartments().find((d) => d.id === departmentId);
-  if (!dept) return res.status(400).json({ ok: false, error: '教研室不存在' });
+  if (!dept) return res.status(400).json({ ok: false, error: '所选教研室/岗位不存在' });
   const docs = getMyDocs();
   const key = myDocKey(m, departmentId, name);
   const r = docs[key];
@@ -1497,6 +1775,7 @@ app.use((req, res) => res.status(404).json({ ok: false, error: '接口不存在'
 
 ensureDirs();
 startAutoScheduler();
+startMailCheckScheduler();
 const server = app.listen(PORT, () => {
   console.log('==================================================');
   console.log('  月度工作总结与计划生成系统 已启动');

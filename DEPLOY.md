@@ -143,6 +143,26 @@ Nginx 反代与 HTTPS 配置同上。
 
 ---
 
+## 生产环境实际部署（当前线上：systemd，非 Docker）
+
+线上服务器 `8.138.41.74` 实际由 systemd 托管，与上文 Docker 方案不同。改动代码后按此操作：
+
+| 项 | 值 |
+|---|---|
+| 代码目录 | `/opt/apps/monthly-report` |
+| 服务单元 | `/etc/systemd/system/mrgs.service` |
+| 端口 | `PORT=8080`（仅本机，由 Nginx 反代 80） |
+| 数据目录 | `/opt/apps/monthly-report/data`（settings / departments / submissions / reports / mail-checks） |
+| 日志 | `journalctl -u mrgs.service -f` |
+
+**更新代码**：覆盖 `server.js`、`public/*.html` 后执行 `systemctl restart mrgs.service`；纯静态页面改动无需重启。
+
+**⚠️ 单元文件必须包含 `Environment=HOME=/root`**：Agently 邮箱凭据保存在 `$HOME/.agently-cli` 与 `$HOME/.local/share/agently-cli`。systemd 默认不注入 HOME，服务内调用 Agently 会报 `Authorization required`（而手动 ssh 执行却完全正常，极易误判为"没授权"）。该行已加入单元文件，迁移或重建服务器时不要遗漏。
+
+**回滚**：`/root/backups/mrgs-<时间戳>.tgz`（含 data，排除 node_modules）；单元文件备份 `/root/backups/mrgs.service.bak-<时间戳>`。
+
+---
+
 ## 方案 B：单位内网服务器 / 常开电脑 + 内网穿透（免费快速）
 
 如果暂时不想买服务器，可在单位一台常开的电脑上运行系统，再用内网穿透让公网访问：

@@ -30,13 +30,13 @@
           <div class="hint">所选月份为「工作总结」所属月份，工作计划自动对应下月</div>
         </div>
         <div>
-          <label>教研室 <span class="req">*</span></label>
+          <label>教研室 / 岗位 <span class="req">*</span></label>
           <select id="department"></select>
         </div>
         <div>
           <label>姓名 <span class="req">*</span></label>
           <select id="memberName">
-            <option value="">请先选择教研室</option>
+            <option value="">请先选择教研室或岗位</option>
           </select>
           <div class="hint">成员名单由系统设置，如需增减请联系管理员</div>
         </div>
@@ -69,7 +69,7 @@
     </div>
 
     <div class="card" id="progressCard" style="display:none">
-      <h2>📊 本教研室提交进度</h2>
+      <h2>📊 本单位提交进度</h2>
       <div id="progressBody"></div>
     </div>
 
@@ -143,9 +143,13 @@
       monthInput.value = res.currentMonth;
       updateMonthLabels();
 
-      deptSelect.innerHTML = '<option value="">请选择教研室</option>' +
-        departments.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
-      if (!departments.length) deptSelect.innerHTML = '<option value="">暂无教研室，请联系管理员在设置页添加</option>';
+      const teachingUnits = departments.filter(d => d.kind !== 'post');
+      const postUnits = departments.filter(d => d.kind === 'post');
+      const optGroups = [];
+      if (teachingUnits.length) optGroups.push('<optgroup label="教研室">' + teachingUnits.map(d => `<option value="${d.id}">${d.name}</option>`).join('') + '</optgroup>');
+      if (postUnits.length) optGroups.push('<optgroup label="部门直属岗位">' + postUnits.map(d => `<option value="${d.id}">${d.name}</option>`).join('') + '</optgroup>');
+      deptSelect.innerHTML = '<option value="">请选择教研室或岗位</option>' + optGroups.join('');
+      if (!departments.length) deptSelect.innerHTML = '<option value="">暂无教研室或岗位，请联系管理员在设置页添加</option>';
 
       deptSelect.addEventListener('change', () => { fillMembers(); refreshProgress(); });
       monthInput.addEventListener('change', () => { updateMonthLabels(); loadMySubmission(); refreshProgress(); });
@@ -245,8 +249,8 @@
         ${complete ? `
           <div class="alert ${boot.settings.autoEnabled && boot.settings.hasCollegeEmail ? 'success' : 'warn'}" style="margin-top:12px;margin-bottom:0">
             ${boot.settings.autoEnabled && boot.settings.hasCollegeEmail
-              ? '本教研室本月已全部提交，系统会自动汇总生成 Word 文档并发送至二级学院指定邮箱，无需人工操作。'
-              : '本教研室本月已全部提交。提示：系统尚未配置「自动汇总」（需在设置页填写二级学院接收邮箱），请联系管理员配置或到「汇总生成」页手动处理。'}
+              ? '本单位本月已全部提交，系统会自动汇总生成 Word 文档并发送至二级学院指定邮箱，无需人工操作。'
+              : '本单位本月已全部提交。提示：系统尚未配置「自动汇总」（需在设置页填写二级学院接收邮箱），请联系管理员配置或到「汇总生成」页手动处理。'}
           </div>` : ''}`;
     }
 

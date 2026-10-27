@@ -42,11 +42,12 @@
     </div>
 
     <div class="card">
-      <h2>🏢 教研室与主任管理 <span class="sub">成员名单固定；主任换届时在此修改姓名与邮箱即可</span></h2>
+      <h2>🏢 教研室与部门直属岗位管理 <span class="sub">类型分「教研室」与「部门直属岗位」，名称由你自定义；两者都需提交月总结与月计划</span></h2>
       <div id="deptList"></div>
       <div class="row">
         <button class="btn secondary sm" id="addDeptBtn">＋ 添加教研室</button>
-        <button class="btn" id="saveDeptsBtn">保存教研室信息</button>
+        <button class="btn secondary sm" id="addPostBtn">＋ 添加部门直属岗位</button>
+        <button class="btn" id="saveDeptsBtn">保存教研室与岗位信息</button>
       </div>
     </div>
 
@@ -110,6 +111,19 @@
         <button class="btn" id="saveSmtpBtn">保存邮件设置</button>
         <button class="btn secondary" id="testSmtpBtn">发送测试邮件</button>
         <input type="email" id="testSmtpTo" placeholder="测试收件邮箱" style="max-width:240px">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🩺 邮箱服务健康检查 <span class="sub">每月 23 号自动检查一次；完全不可用时发告警邮件</span></h2>
+      <div id="mailCheckBox" class="hint">尚未检查</div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn secondary sm" id="runMailCheckBtn">立即检查</button>
+      </div>
+      <div class="hint" style="margin-top:8px">
+        只读探测，不会真的发信：发信方式为 Agently 时执行 agently-cli +me，为 SMTP 时做握手验证。
+        主通道故障但另一通道可用时判定为「降级可用」——系统发送时本就会自动回退。
+        若每月 23 号当天服务未运行，会在之后首次运行时补检一次。
       </div>
     </div>
 
@@ -200,6 +214,7 @@
         departments = res.departments;
         fillForms();
         showSettings();
+        loadMailCheck();
       } else {
         showLogin();
       }
@@ -227,25 +242,38 @@
     }
 
     function renderDepts() {
-      $('deptList').innerHTML = departments.map((d, i) => `
+      $('deptList').innerHTML = departments.map((d, i) => {
+        const isPost = d.kind === 'post';
+        const noun = isPost ? '岗位' : '教研室';
+        const headLabel = isPost ? '部门负责人' : '主任';
+        return `
         <div class="dep-card">
           <div class="dep-head">
-            <div class="dep-name">${i + 1}. ${escapeHtml(d.name)}</div>
+            <div class="dep-name">${i + 1}. ${escapeHtml(d.name)}${isPost ? ' <span class="badge blue">部门直属岗位</span>' : ''}</div>
             <button class="btn danger sm" data-i="${i}">删除</button>
           </div>
           <div class="grid cols-3">
-            <div><label>教研室名称</label><input type="text" data-field="name" data-i="${i}" value="${escapeHtml(d.name)}"></div>
-            <div><label>主任姓名</label><input type="text" data-field="headName" data-i="${i}" value="${escapeHtml(d.headName)}"></div>
-            <div><label>主任邮箱（个人文档与汇总发送用）</label><input type="email" data-field="headEmail" data-i="${i}" value="${escapeHtml(d.headEmail)}" placeholder="head@college.edu.cn"></div>
+            <div><label>类型</label>
+              <select data-field="kind" data-i="${i}">
+                <option value="teaching"${isPost ? '' : ' selected'}>教研室（教师岗）</option>
+                <option value="post"${isPost ? ' selected' : ''}>部门直属岗位（归部门负责人管辖）</option>
+              </select>
+            </div>
+            <div><label>${noun}名称</label><input type="text" data-field="name" data-i="${i}" value="${escapeHtml(d.name)}"></div>
+            <div><label>${headLabel}姓名</label><input type="text" data-field="headName" data-i="${i}" value="${escapeHtml(d.headName)}"></div>
+          </div>
+          <div style="margin-top:10px">
+            <label>${headLabel}邮箱（汇总邮件主送、个人文档发送用）</label><input type="email" data-field="headEmail" data-i="${i}" value="${escapeHtml(d.headEmail)}" placeholder="head@college.edu.cn">
           </div>
           <div style="margin-top:10px">
             <label>成员名单（每行一个姓名，全员提交后自动汇总）</label>
             <textarea data-field="members" data-i="${i}" style="min-height:80px">${escapeHtml((d.members || []).map(m => m.name).join('\n'))}</textarea>
           </div>
-        </div>`).join('') || '<div class="empty">暂无教研室，点击下方「添加教研室」创建</div>';
+        </div>`;
+      }).join('') || '<div class="empty">暂无教研室或岗位，点击下方按钮创建</div>';
 
-      $('deptList').querySelectorAll('input[data-field], textarea[data-field]').forEach(el => {
-        el.addEventListener('input', () => {
+      $('deptList').querySelectorAll('input[data-field], textarea[data-field], select[data-field]').forEach(el => {
+        const sync = () => {
           const i = Number(el.dataset.i);
           const f = el.dataset.field;
           if (f === 'members') {
@@ -253,7 +281,10 @@
           } else {
             departments[i][f] = el.value;
           }
-        });
+          if (f === 'kind') renderDepts();
+        };
+        el.addEventListener('input', sync);
+        el.addEventListener('change', sync);
       });
       $('deptList').querySelectorAll('button[data-i]').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -264,7 +295,12 @@
     }
 
     $('addDeptBtn').addEventListener('click', () => {
-      departments.push({ id: 'd' + Date.now(), name: '新教研室', headName: '', headEmail: '', members: [] });
+      departments.push({ id: 'd' + Date.now(), kind: 'teaching', name: '新教研室', headName: '', headEmail: '', members: [] });
+      renderDepts();
+    });
+
+    $('addPostBtn').addEventListener('click', () => {
+      departments.push({ id: 'post' + Date.now(), kind: 'post', name: '新岗位', headName: '', headEmail: '', members: [] });
       renderDepts();
     });
 
@@ -406,6 +442,52 @@
       });
     }
     enhancePwdInputs();
+
+    /* ---------------- 邮箱服务健康检查 ---------------- */
+    function renderMailCheck(data) {
+      const box = $('mailCheckBox');
+      if (!data || !data.last) {
+        box.innerHTML = '<span class="hint">尚无检查记录。每月 23 号会自动检查一次，也可点「立即检查」。</span>';
+        return;
+      }
+      const r = data.last;
+      const tag = r.sendable ? (r.ok ? '✅ 正常' : '⚠️ 降级可用') : '❌ 不可用';
+      const cls = r.sendable ? (r.ok ? 'green' : 'blue') : 'gray';
+      const when = new Date(r.at).toLocaleString('zh-CN');
+      box.innerHTML = `
+        <div class="row between" style="margin-bottom:8px">
+          <div><strong>${tag}</strong> <span class="badge ${cls}">${r.source === 'scheduled' ? '定时检查' : '手动检查'}</span></div>
+          <span class="hint">${escapeHtml(when)}</span>
+        </div>
+        <div class="hint" style="margin-bottom:8px">${escapeHtml(r.detail || '')}</div>
+        <ul class="hint" style="margin:0;padding-left:18px">
+          ${(r.channels || []).map(c => `<li>${escapeHtml(c.channel)}：${c.ok ? '可用' : '不可用'} —— ${escapeHtml(c.detail || '')}（${c.ms}ms）</li>`).join('')}
+        </ul>`;
+    }
+
+    async function loadMailCheck() {
+      try {
+        const res = await fetch('/api/mail-check', { headers: authHeaders() }).then(r => r.json());
+        if (res.ok) renderMailCheck(res);
+      } catch (e) { /* 未登录时静默 */ }
+    }
+
+    $('runMailCheckBtn').addEventListener('click', async () => {
+      const btn = $('runMailCheckBtn');
+      btn.disabled = true;
+      btn.textContent = '检查中…';
+      try {
+        const res = await fetch('/api/mail-check', { method: 'POST', headers: authHeaders() }).then(r => r.json());
+        if (!res.ok) throw new Error(res.error || '检查失败');
+        renderMailCheck({ last: res.result });
+        toast(res.result.sendable ? '邮箱服务可用' : '邮箱服务不可用，请检查授权或 SMTP 配置', res.result.sendable ? 'ok' : 'err');
+      } catch (e) {
+        toast('检查失败：' + e.message, 'err');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '立即检查';
+      }
+    });
 
     /* 启动：有 token 则直接加载，否则显示登录 */
     if (localStorage.getItem(TOKEN_KEY)) {
